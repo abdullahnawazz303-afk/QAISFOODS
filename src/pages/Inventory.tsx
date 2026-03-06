@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { formatPKR, formatKG, formatDate } from "@/lib/formatters";
 import type { Grade } from "@/types";
 
-const ITEM_OPTIONS = ["Dal Mash", "Dal Chana", "Dal Moong", "Rice", "Chickpeas", "Red Lentils", "Black Gram"];
+const ITEM_OPTIONS = ["دال ماش", "دال چنا", "دال مونگ", "چاول", "چنے", "دال مسور", "ماش کی دال"];
 const GRADE_OPTIONS: Grade[] = ['A+', 'A', 'B', 'C'];
 
 const Inventory = () => {

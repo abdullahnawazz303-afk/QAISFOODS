@@ -30,7 +30,7 @@ export function AppSidebar() {
   const location = useLocation();
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="overflow-hidden">
       <SidebarHeader className="p-4 border-b border-sidebar-border">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center shrink-0">
@@ -44,7 +44,7 @@ export function AppSidebar() {
           )}
         </div>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="scrollbar-none">
         <SidebarGroup>
           <SidebarGroupLabel>Operations</SidebarGroupLabel>
           <SidebarGroupContent>
