@@ -24,6 +24,7 @@ const statusVariant = (s: BookingStatus) => {
   switch (s) {
     case 'Booked': return 'secondary';
     case 'Partially Paid': return 'secondary';
+    case 'Fully Paid': return 'default';
     case 'Delivered': return 'secondary';
     case 'Completed': return 'default';
     case 'Cancelled': return 'destructive';
