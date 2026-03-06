@@ -105,6 +105,11 @@ const AdvanceBookings = () => {
   const handlePushToInventory = (bookingId: string) => {
     const booking = bookings.find(b => b.id === bookingId);
     if (!booking) return;
+    if (booking.remainingBalance > 0) {
+      toast.error("Clear remaining payment before pushing to inventory");
+      return;
+    }
+
     for (const item of booking.items) {
       addBatch({
         itemName: item.itemName,
@@ -127,6 +132,8 @@ const AdvanceBookings = () => {
     const amount = Number(fd.get("amount"));
     const booking = bookings.find(b => b.id === detailId);
     if (!booking) return;
+    if (amount <= 0) { toast.error("Payment must be greater than zero"); return; }
+    if (amount > booking.remainingBalance) { toast.error("Payment cannot exceed remaining balance"); return; }
 
     addPayment(detailId, amount, fd.get("notes") as string || "");
     addLedgerEntry(booking.vendorId, { date: getTodayISO(), type: "Payment Made", description: `Payment: ${detailId}`, debit: 0, credit: amount });
