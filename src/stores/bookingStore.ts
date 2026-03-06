@@ -62,7 +62,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
 
   getUpcomingDeliveries: (limit) => {
     return get().bookings
-      .filter(b => b.status === 'Booked' || b.status === 'Partially Paid')
+      .filter(b => b.status === 'Booked' || b.status === 'Partially Paid' || b.status === 'Fully Paid')
       .sort((a, b) => a.expectedDeliveryDate.localeCompare(b.expectedDeliveryDate))
       .slice(0, limit);
   },
