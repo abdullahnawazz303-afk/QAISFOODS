@@ -57,7 +57,7 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   },
 
   getPendingDeliveryCount: () => {
-    return get().bookings.filter(b => b.status === 'Booked' || b.status === 'Partially Paid').length;
+    return get().bookings.filter(b => b.status === 'Booked' || b.status === 'Partially Paid' || b.status === 'Fully Paid').length;
   },
 
   getUpcomingDeliveries: (limit) => {
