@@ -25,6 +25,7 @@ export function seedAllData() {
   const bookingStore = useBookingStore.getState();
   const chequeStore = useChequeStore.getState();
   const cashFlowStore = useCashFlowStore.getState();
+  const companyBalanceStore = useCompanyBalanceStore.getState();
 
   // ── Vendors ──
   const v1 = vendorStore.addVendor({ name: 'بشیر ملک', phone: '0301-1234567', address: 'فیصل آباد', creditDays: 30 });
