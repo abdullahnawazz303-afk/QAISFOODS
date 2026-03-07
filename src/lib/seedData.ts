@@ -9,6 +9,7 @@ import { useSalesStore } from '@/stores/salesStore';
 import { useBookingStore } from '@/stores/bookingStore';
 import { useChequeStore } from '@/stores/chequeStore';
 import { useCashFlowStore } from '@/stores/cashFlowStore';
+import { useCompanyBalanceStore } from '@/stores/companyBalanceStore';
 import type { Grade, CashInCategory, CashOutCategory } from '@/types';
 
 let seeded = false;
@@ -24,6 +25,7 @@ export function seedAllData() {
   const bookingStore = useBookingStore.getState();
   const chequeStore = useChequeStore.getState();
   const cashFlowStore = useCashFlowStore.getState();
+  const companyBalanceStore = useCompanyBalanceStore.getState();
 
   // ── Vendors ──
   const v1 = vendorStore.addVendor({ name: 'بشیر ملک', phone: '0301-1234567', address: 'فیصل آباد', creditDays: 30 });
@@ -62,15 +64,18 @@ export function seedAllData() {
   vendorStore.addLedgerEntry(v1, { date: '2025-12-10', type: 'خریداری', description: 'دال مسور 500 کلو', debit: 0, credit: 140000 });
   vendorStore.addLedgerEntry(v1, { date: '2025-12-15', type: 'خریداری', description: 'دال چنا 800 کلو', debit: 0, credit: 176000 });
   vendorStore.addLedgerEntry(v1, { date: '2025-12-20', type: 'ادائیگی', description: 'نقد ادائیگی', debit: 100000, credit: 0 });
+  companyBalanceStore.addVendorPayment(100000);
   vendorStore.addLedgerEntry(v1, { date: '2026-01-10', type: 'خریداری', description: 'چنے 1000 کلو', debit: 0, credit: 180000 });
   vendorStore.addLedgerEntry(v1, { date: '2026-01-25', type: 'خریداری', description: 'ماش کی دال 350 کلو', debit: 0, credit: 147000 });
   vendorStore.addLedgerEntry(v1, { date: '2026-02-05', type: 'ادائیگی', description: 'چیک سے ادائیگی', debit: 200000, credit: 0 });
+  companyBalanceStore.addVendorPayment(200000);
   vendorStore.addLedgerEntry(v1, { date: '2026-02-10', type: 'خریداری', description: 'چاول 500 کلو', debit: 0, credit: 155000 });
 
   vendorStore.addLedgerEntry(v2, { date: '2025-12-20', type: 'خریداری', description: 'دال مونگ 400 کلو', debit: 0, credit: 140000 });
   vendorStore.addLedgerEntry(v2, { date: '2026-01-05', type: 'خریداری', description: 'دال ماش 300 کلو', debit: 0, credit: 135000 });
   vendorStore.addLedgerEntry(v2, { date: '2026-01-15', type: 'خریداری', description: 'دال مسور 600 کلو', debit: 0, credit: 156000 });
   vendorStore.addLedgerEntry(v2, { date: '2026-01-20', type: 'ادائیگی', description: 'نقد ادائیگی', debit: 150000, credit: 0 });
+  companyBalanceStore.addVendorPayment(150000);
   vendorStore.addLedgerEntry(v2, { date: '2026-02-01', type: 'خریداری', description: 'دال چنا 700 کلو', debit: 0, credit: 140000 });
   vendorStore.addLedgerEntry(v2, { date: '2026-02-20', type: 'خریداری', description: 'دال مونگ 450 کلو', debit: 0, credit: 171000 });
 
@@ -125,6 +130,9 @@ export function seedAllData() {
         credit: s.amountPaid,
       });
     }
+
+    // Track sales income in company balance
+    companyBalanceStore.addSalesIncome(s.amountPaid);
   });
 
   // ── Advance Bookings (6 records) ──

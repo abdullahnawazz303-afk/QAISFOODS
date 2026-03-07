@@ -1,5 +1,5 @@
 import { KpiCard } from "@/components/KpiCard";
-import { Wallet, Users, Landmark, FileText, Package, Calendar, AlertTriangle } from "lucide-react";
+import { Wallet, Users, Landmark, FileText, Package, Calendar, AlertTriangle, Building2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/EmptyState";
 import { useCashFlowStore } from "@/stores/cashFlowStore";
@@ -9,8 +9,10 @@ import { useChequeStore } from "@/stores/chequeStore";
 import { useInventoryStore } from "@/stores/inventoryStore";
 import { useBookingStore } from "@/stores/bookingStore";
 import { useSalesStore } from "@/stores/salesStore";
+import { useCompanyBalanceStore } from "@/stores/companyBalanceStore";
 import { formatPKR, formatDate } from "@/lib/formatters";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 
 const Dashboard = () => {
   const cashFlowStore = useCashFlowStore();
@@ -20,7 +22,7 @@ const Dashboard = () => {
   const inventoryStore = useInventoryStore();
   const bookingStore = useBookingStore();
   const salesStore = useSalesStore();
-
+  const companyBalanceStore = useCompanyBalanceStore();
   const todayBalance = cashFlowStore.getTodayBalance();
   const totalReceivables = customerStore.getTotalReceivables();
   const totalPayables = vendorStore.getTotalPayables();
@@ -29,6 +31,7 @@ const Dashboard = () => {
   const inventoryValue = inventoryStore.getTotalStockValue();
   const pendingDeliveries = bookingStore.getPendingDeliveryCount();
   const lowStockCount = inventoryStore.getLowStockBatches().length;
+  const companyBalance = companyBalanceStore.getCompanyBalance();
   const sales = salesStore.sales;
   const upcomingBookings = bookingStore.getUpcomingDeliveries(5);
   const customers = customerStore.customers;
@@ -45,6 +48,26 @@ const Dashboard = () => {
         <h1 className="text-2xl font-display font-bold">Dashboard</h1>
         <p className="text-sm text-muted-foreground">Overview of factory operations & finances</p>
       </div>
+
+      {/* Company Total Cash — Prominent Hero Card */}
+      <Card className="border-2 border-primary bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Company Total Cash</p>
+              <p className="text-4xl font-bold font-display mt-2 text-primary">{formatPKR(companyBalance)}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Sales Income: <span className="text-success font-medium">+{formatPKR(companyBalanceStore.totalSalesIncome)}</span>
+                {' · '}
+                Vendor Payments: <span className="text-destructive font-medium">-{formatPKR(companyBalanceStore.totalVendorPayments)}</span>
+              </p>
+            </div>
+            <div className="h-14 w-14 rounded-xl bg-primary/15 flex items-center justify-center">
+              <Building2 className="h-7 w-7 text-primary" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard title="Today's Cash Balance" value={formatPKR(todayBalance)} subtitle="Opening + In - Out" icon={Wallet} />
