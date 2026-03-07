@@ -9,6 +9,7 @@ import { useSalesStore } from '@/stores/salesStore';
 import { useBookingStore } from '@/stores/bookingStore';
 import { useChequeStore } from '@/stores/chequeStore';
 import { useCashFlowStore } from '@/stores/cashFlowStore';
+import { useCompanyBalanceStore } from '@/stores/companyBalanceStore';
 import type { Grade, CashInCategory, CashOutCategory } from '@/types';
 
 let seeded = false;
