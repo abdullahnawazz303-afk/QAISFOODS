@@ -41,7 +41,7 @@ export function seedAllData() {
   const batches: { itemName: string; grade: Grade; vendorId: string; purchasePrice: number; quantity: number; purchaseDate: string; notes: string }[] = [
     { itemName: 'دال مسور',   grade: 'A',  vendorId: v1, purchasePrice: 280, quantity: 500,  purchaseDate: '2025-12-10', notes: 'پہلی کھیپ' },
     { itemName: 'دال چنا',    grade: 'A+', vendorId: v1, purchasePrice: 220, quantity: 800,  purchaseDate: '2025-12-15', notes: 'بہترین کوالٹی' },
-    { itemName: 'دال مونگ',   grade: 'A',  vendorId: v2, purchasePrice: 350, quantity: 400,  purchaseDate: '2025-12-20', notes: 'آگری منڈی سے' },
+    { itemName: 'دال مونگ',   grade: 'A',  vendorId: v2, purchasePrice: 350, quantity: 400,  purchaseDate: '2025-12-20', notes: 'اکبری منڈی سے' },
     { itemName: 'دال ماش',    grade: 'A+', vendorId: v2, purchasePrice: 450, quantity: 300,  purchaseDate: '2026-01-05', notes: 'پریمیم گریڈ' },
     { itemName: 'چنے',        grade: 'B',  vendorId: v1, purchasePrice: 180, quantity: 1000, purchaseDate: '2026-01-10', notes: 'بلک آرڈر' },
     { itemName: 'دال مسور',   grade: 'B',  vendorId: v2, purchasePrice: 260, quantity: 600,  purchaseDate: '2026-01-15', notes: 'دوسری کھیپ' },
