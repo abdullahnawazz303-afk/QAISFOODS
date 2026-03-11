@@ -11,7 +11,7 @@ export function PublicFooter() {
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                 <Leaf className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="font-bold text-foreground">FFCMS Lentils</span>
+              <span className="font-bold text-foreground">Qais Foods</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Premium quality lentils and pulses, sourced from the finest farms across Pakistan. 
