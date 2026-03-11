@@ -21,6 +21,7 @@ const navItems = [
   { title: "Advance Bookings", url: "/advance-bookings", icon: FileText },
   { title: "Bank & Cheques", url: "/bank-cheques", icon: CreditCard },
   { title: "Daily Cash Flow", url: "/cash-flow", icon: Wallet },
+  { title: "Waste Management", url: "/waste", icon: Trash2 },
   { title: "Online Orders", url: "/online-orders", icon: Globe },
   { title: "Reports", url: "/reports", icon: BarChart3 },
 ];
