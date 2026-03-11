@@ -17,7 +17,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
   addCustomer: (c) => {
     const id = generateId('C');
-    const openingBalance = (c as any).openingBalance ?? 0;
+    const openingBalance = c.openingBalance ?? 0;
 
     const initialEntries: LedgerEntry[] = [];
     if (openingBalance > 0) {

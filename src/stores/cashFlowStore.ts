@@ -17,7 +17,6 @@ export const useCashFlowStore = create<CashFlowState>((set, get) => ({
     const existing = get().days[date];
     if (existing) return existing;
 
-    // Find previous day's closing balance
     const allDates = Object.keys(get().days).sort();
     let openingBalance = 0;
     for (let i = allDates.length - 1; i >= 0; i--) {
@@ -68,7 +67,6 @@ export const useCashFlowStore = create<CashFlowState>((set, get) => ({
     const today = getTodayISO();
     const day = get().days[today];
     if (!day) {
-      // Find last closing balance
       const allDates = Object.keys(get().days).sort();
       for (let i = allDates.length - 1; i >= 0; i--) {
         const d = get().days[allDates[i]];
