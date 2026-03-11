@@ -160,3 +160,17 @@ export interface OnlineOrder {
   status: OnlineOrderStatus;
   adminNotes: string;
 }
+
+// ── Waste / Cleansing ──
+export interface WasteEntry {
+  id: string;
+  date: string;
+  batchId: string;
+  vendorId: string;
+  itemName: string;
+  grade: Grade;
+  originalQuantity: number;
+  wasteQuantity: number;
+  cleanedQuantity: number;
+  notes: string;
+}

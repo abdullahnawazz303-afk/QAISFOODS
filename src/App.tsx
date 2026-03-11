@@ -22,6 +22,7 @@ import BankCheques from "./pages/BankCheques";
 import Rokar from "./pages/Rokar";
 import Reports from "./pages/Reports";
 import OnlineOrders from "./pages/OnlineOrders";
+import WasteManagement from "./pages/WasteManagement";
 import CustomerPortal from "./pages/CustomerPortal";
 import NotFound from "./pages/NotFound";
 
@@ -73,6 +74,7 @@ const App = () => (
           <Route path="/bank-cheques" element={<ProtectedRoute><AppLayout><BankCheques /></AppLayout></ProtectedRoute>} />
           <Route path="/cash-flow" element={<ProtectedRoute><AppLayout><Rokar /></AppLayout></ProtectedRoute>} />
           <Route path="/online-orders" element={<ProtectedRoute><AppLayout><OnlineOrders /></AppLayout></ProtectedRoute>} />
+          <Route path="/waste" element={<ProtectedRoute><AppLayout><WasteManagement /></AppLayout></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><AppLayout><Reports /></AppLayout></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
