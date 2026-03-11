@@ -36,7 +36,7 @@ export function PublicFooter() {
           </div>
         </div>
         <div className="mt-8 pt-8 border-t text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} FFCMS Lentils. All rights reserved.
+          © {new Date().getFullYear()} Qais Foods. All rights reserved.
         </div>
       </div>
     </footer>
