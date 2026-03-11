@@ -50,7 +50,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.slice(0, 5).map((item) => {
-                const isActive = item.url === "/" ? location.pathname === "/" : location.pathname.startsWith(item.url);
+                const isActive = location.pathname === item.url || (item.url !== "/dashboard" && location.pathname.startsWith(item.url));
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
