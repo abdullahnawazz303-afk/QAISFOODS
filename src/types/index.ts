@@ -9,22 +9,32 @@ export type ChequeStatus = 'Pending' | 'Cleared' | 'Bounced';
 export type PaymentStatus = 'Paid' | 'Partially Paid' | 'Unpaid';
 export type CashEntryType = 'in' | 'out';
 export type CashInCategory = 'Customer Payment' | 'Sale Revenue' | 'Other Income';
-export type CashOutCategory = 'Salary' | 'Transport' | 'Utilities' | 'Vendor Payment' | 'Miscellaneous';
+export type CashOutCategory = 'Salary' | 'Transport' | 'Utilities' | 'Vendor Payment' | 'Cheque Payment' | 'Miscellaneous';
 
 export interface Vendor {
   id: string;
   name: string;
+  contactPerson: string;
   phone: string;
+  city: string;
   address: string;
-  creditDays: number;
+  openingBalance: number;
+  notes: string;
+  isActive: boolean;
   createdAt: string;
 }
 
 export interface Customer {
   id: string;
   name: string;
+  contactPerson: string;
   phone: string;
+  city: string;
   address: string;
+  openingBalance: number;
+  creditLimit: number;
+  notes: string;
+  isActive: boolean;
   createdAt: string;
 }
 

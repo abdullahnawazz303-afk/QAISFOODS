@@ -6,7 +6,6 @@ interface InventoryState {
   batches: InventoryBatch[];
   addBatch: (b: Omit<InventoryBatch, 'id' | 'batchRef' | 'remainingQuantity'>) => string;
   deductFromBatch: (batchId: string, qty: number) => boolean;
-  addToBatch: (batch: Omit<InventoryBatch, 'id' | 'batchRef' | 'remainingQuantity'>) => string;
   getTotalStockValue: () => number;
   getLowStockBatches: () => InventoryBatch[];
   getUniqueItemCount: () => number;
@@ -14,13 +13,18 @@ interface InventoryState {
 
 let batchCounter = 0;
 
+const makeBatchRef = (date: string): string => {
+  batchCounter++;
+  const d = date.replace(/-/g, '');
+  return `BT-${d}-${String(batchCounter).padStart(4, '0')}`;
+};
+
 export const useInventoryStore = create<InventoryState>((set, get) => ({
   batches: [],
 
   addBatch: (b) => {
-    batchCounter++;
     const id = generateId('INV');
-    const batchRef = `BATCH-${String(batchCounter).padStart(4, '0')}`;
+    const batchRef = makeBatchRef(b.purchaseDate);
     const batch: InventoryBatch = { ...b, id, batchRef, remainingQuantity: b.quantity };
     set((s) => ({ batches: [...s.batches, batch] }));
     return id;
@@ -35,10 +39,6 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       ),
     }));
     return true;
-  },
-
-  addToBatch: (b) => {
-    return get().addBatch(b);
   },
 
   getTotalStockValue: () => {

@@ -17,9 +17,24 @@ export const useVendorStore = create<VendorState>((set, get) => ({
 
   addVendor: (v) => {
     const id = generateId('V');
+    const openingBalance = v.openingBalance ?? 0;
+
+    const initialEntries: LedgerEntry[] = [];
+    if (openingBalance > 0) {
+      initialEntries.push({
+        id: generateId('VL'),
+        date: getTodayISO(),
+        type: 'Opening Balance',
+        description: 'Opening balance at time of registration',
+        debit: 0,
+        credit: openingBalance,
+        balance: openingBalance,
+      });
+    }
+
     set((s) => ({
       vendors: [...s.vendors, { ...v, id, createdAt: getTodayISO() }],
-      ledgerEntries: { ...s.ledgerEntries, [id]: [] },
+      ledgerEntries: { ...s.ledgerEntries, [id]: initialEntries },
     }));
     return id;
   },
@@ -28,8 +43,8 @@ export const useVendorStore = create<VendorState>((set, get) => ({
     set((s) => {
       const existing = s.ledgerEntries[vendorId] || [];
       const lastBalance = existing.length > 0 ? existing[existing.length - 1].balance : 0;
-      // credit = vendor gave us goods = we OWE more = balance goes UP
-      // debit  = we paid vendor     = we OWE less  = balance goes DOWN
+      // credit = we owe vendor more (purchase/bounce)
+      // debit  = we owe vendor less (payment/cheque)
       const newBalance = lastBalance + entry.credit - entry.debit;
       const newEntry: LedgerEntry = {
         ...entry,
