@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Package, ShoppingCart, Users, BookOpen,
-  Wallet, Landmark, FileText, BarChart3, Leaf, Store, CreditCard, Globe
+  Wallet, Landmark, FileText, BarChart3, Leaf, Store, CreditCard, Globe, Trash2
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
