@@ -1,5 +1,6 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Bell, User, LogOut } from "lucide-react";
+import qfLogo from "@/assets/qf-logo.png";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/authStore";
 import { useNavigate } from "react-router-dom";
