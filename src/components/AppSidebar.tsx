@@ -36,13 +36,11 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="overflow-hidden">
       <SidebarHeader className="p-4 border-b border-sidebar-border">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center shrink-0">
-            <Leaf className="h-4 w-4 text-sidebar-primary-foreground" />
-          </div>
+          <img src={qfLogo} alt="QF Logo" className="w-8 h-8 object-contain shrink-0 rounded bg-white p-0.5" />
           {!collapsed && (
             <div className="flex flex-col">
-              <span className="font-display font-bold text-sm text-sidebar-primary">Qais Foods</span>
-              <span className="text-[10px] text-sidebar-foreground/60">Management System</span>
+              <span className="font-display font-bold text-sm text-sidebar-primary">Qais Food</span>
+              <span className="text-[10px] text-sidebar-foreground/60">Pulses &amp; Rice</span>
             </div>
           )}
         </div>
