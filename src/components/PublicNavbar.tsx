@@ -66,25 +66,25 @@ export function PublicNavbar() {
         </nav>
 
         {/* Mobile toggle */}
-        <button className="md:hidden" onClick={() => setMobileOpen(!mobileOpen)}>
+        <button className="md:hidden p-1" onClick={() => setMobileOpen(!mobileOpen)}>
           {mobileOpen ? (
-            <X className={cn("h-6 w-6", scrolled ? "text-foreground" : "text-white")} />
+            <X className={cn("h-7 w-7", scrolled ? "text-foreground" : "text-white")} />
           ) : (
-            <Menu className={cn("h-6 w-6", scrolled ? "text-foreground" : "text-white")} />
+            <Menu className={cn("h-7 w-7", scrolled ? "text-foreground" : "text-white")} />
           )}
         </button>
       </div>
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="md:hidden bg-card border-t border-border px-4 pb-4 pt-2 space-y-2 shadow-lg">
+        <div className="md:hidden bg-card border-t border-border px-5 pb-5 pt-3 space-y-1 shadow-lg">
           {navLinks.map((l) => (
             <Link
               key={l.to}
               to={l.to}
               onClick={() => setMobileOpen(false)}
               className={cn(
-                "block py-2.5 text-sm font-medium transition-colors",
+                "block py-3 text-base font-bold transition-colors",
                 location.pathname === l.to ? "text-primary" : "text-muted-foreground"
               )}
             >
@@ -92,7 +92,7 @@ export function PublicNavbar() {
             </Link>
           ))}
           <Link to="/login" onClick={() => setMobileOpen(false)}>
-            <Button size="sm" className="w-full mt-2">Login</Button>
+            <Button size="default" className="w-full mt-3 text-base">Login</Button>
           </Link>
         </div>
       )}
