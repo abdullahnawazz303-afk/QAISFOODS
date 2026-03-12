@@ -215,7 +215,7 @@ const Sales = () => {
                     <SelectTrigger><SelectValue placeholder="Select Batch" /></SelectTrigger>
                     <SelectContent>
                       {availableBatches.map(b => (
-                        <SelectItem key={b.id} value={b.id}>{b.itemName} {b.grade} — {formatKG(b.remainingQuantity)} avail</SelectItem>
+                        <SelectItem key={b.id} value={b.id}>{b.itemName} {b.grade} ({formatPKR(b.purchasePrice)}/kg) — {formatKG(b.remainingQuantity)} avail</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
