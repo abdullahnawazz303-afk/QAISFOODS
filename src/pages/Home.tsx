@@ -73,16 +73,16 @@ export default function Home() {
               <Leaf className="h-3.5 w-3.5 text-primary-foreground" />
               <span className="text-xs font-medium tracking-wide text-white/90 uppercase">Established Quality Since 2010</span>
             </motion.div>
-            <motion.div variants={fadeUp} custom={0.5} className="flex items-center gap-5 mb-4">
-              <img src={qfLogo} alt="QF Logo" className="w-20 h-20 md:w-32 md:h-32 object-contain" />
-              <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.1] tracking-tight">
-                Pakistan's Trusted
-                <br />
-                <span className="text-primary">Lentil &amp; Pulse</span>
-                <br />
-                Factory
-              </h1>
+            <motion.div variants={fadeUp} custom={0.5} className="mb-3">
+              <img src={qfLogo} alt="QF Logo" className="w-24 h-24 md:w-32 md:h-32 object-contain" />
             </motion.div>
+            <motion.h1 variants={fadeUp} custom={1} className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-[1.1] tracking-tight">
+              Pakistan's Trusted
+              <br />
+              <span className="text-primary">Lentil &amp; Pulse</span>
+              <br />
+              Factory
+            </motion.h1>
             <motion.p variants={fadeUp} custom={2} className="text-base sm:text-lg md:text-xl text-white/75 mb-10 leading-relaxed max-w-lg">
               Factory-cleaned, graded, and packaged — delivering unmatched quality to wholesale markets across the nation.
             </motion.p>
