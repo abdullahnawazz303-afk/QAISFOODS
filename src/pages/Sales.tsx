@@ -17,9 +17,10 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { formatPKR, formatKG, formatDate, getTodayISO } from "@/lib/formatters";
 import type { SaleItem } from "@/types";
+import RecordPaymentDialog from "@/components/RecordPaymentDialog";
 
 const Sales = () => {
-  const { sales, addSale, addPayment } = useSalesStore();
+  const { sales, addSale } = useSalesStore();
   const { customers, addLedgerEntry } = useCustomerStore();
   const { batches, deductFromBatch } = useInventoryStore();
   const { addEntry: addCashEntry } = useCashFlowStore();
@@ -35,9 +36,10 @@ const Sales = () => {
   const [currentQty, setCurrentQty] = useState("");
   const [currentPrice, setCurrentPrice] = useState("");
 
+  // Payment dialog state — now uses the shared RecordPaymentDialog
   const [payOpen, setPayOpen] = useState(false);
-  const [payingSaleId, setPayingSaleId] = useState<string | null>(null);
-  const [payAmount, setPayAmount] = useState("");
+  const [payingSaleId, setPayingSaleId] = useState<string | undefined>(undefined);
+  const [payingCustomerId, setPayingCustomerId] = useState<string | undefined>(undefined);
 
   const availableBatches = batches
     .map(b => {
@@ -46,10 +48,6 @@ const Sales = () => {
     })
     .filter(b => b.remainingQuantity > 0);
   const getCustomerName = (id: string) => customers.find(c => c.id === id)?.name || 'Unknown';
-  const getVendorName = (id: string) => {
-    const batch = batches.find(b => b.vendorId === id);
-    return batch ? id : 'Unknown';
-  };
 
   const addSaleItem = () => {
     const batch = batches.find(b => b.id === currentBatch);
@@ -99,7 +97,7 @@ const Sales = () => {
       credit: 0,
     });
 
-    // Customer ledger: credit for payment
+    // Customer ledger: credit for payment at time of sale
     if (amountPaid > 0) {
       addLedgerEntry(customerId, {
         date: getTodayISO(),
@@ -122,50 +120,11 @@ const Sales = () => {
     toast.success("Sale recorded successfully");
   };
 
-  const openPayDialog = (saleId: string) => {
+  const openPayDialog = (saleId: string, customerId: string) => {
     setPayingSaleId(saleId);
-    setPayAmount("");
+    setPayingCustomerId(customerId);
     setPayOpen(true);
   };
-
-  const handlePayment = () => {
-    if (!payingSaleId) return;
-    const amount = Number(payAmount);
-    if (amount <= 0) { toast.error("Enter a valid amount"); return; }
-
-    const sale = sales.find(s => s.id === payingSaleId);
-    if (!sale) return;
-    if (amount > sale.outstanding) {
-      toast.error(`Cannot exceed outstanding amount of ${formatPKR(sale.outstanding)}`);
-      return;
-    }
-
-    addPayment(payingSaleId, amount);
-
-    addLedgerEntry(sale.customerId, {
-      date: getTodayISO(),
-      type: "Payment Received",
-      description: `Payment for sale ${payingSaleId}`,
-      debit: 0,
-      credit: amount,
-    });
-
-    addCashEntry(getTodayISO(), {
-      type: 'in',
-      category: 'Customer Payment',
-      amount,
-      description: `Payment for sale ${payingSaleId}`,
-    });
-
-    companyBalance.addSalesIncome(amount);
-
-    setPayOpen(false);
-    setPayingSaleId(null);
-    setPayAmount("");
-    toast.success(`PKR ${amount.toLocaleString()} payment recorded`);
-  };
-
-  const payingSale = sales.find(s => s.id === payingSaleId);
 
   const filtered = sales.filter(s => {
     if (!search) return true;
@@ -238,7 +197,7 @@ const Sales = () => {
                 <Input name="amountPaid" type="number" defaultValue="0" required />
                 <p className="text-xs text-muted-foreground">Enter 0 if customer has not paid anything yet.</p>
               </div>
-              <div className="space-y-2"><Label>Notes</Label><Textarea name="notes" /></div>
+              <div className="space-y-2"><Label>Notes</Label><Textarea name="notes" maxLength={500} /></div>
               <Button type="submit" className="w-full">Save Sale</Button>
             </form>
           </DialogContent>
@@ -288,7 +247,7 @@ const Sales = () => {
                     </TableCell>
                     <TableCell>
                       {s.outstanding > 0 && (
-                        <Button size="sm" variant="outline" onClick={() => openPayDialog(s.id)} title="Record Payment">
+                        <Button size="sm" variant="outline" onClick={() => openPayDialog(s.id, s.customerId)} title="Record Payment">
                           <CreditCard className="h-3 w-3 mr-1" /> Pay
                         </Button>
                       )}
@@ -311,65 +270,19 @@ const Sales = () => {
         </>
       )}
 
-      {/* Record Payment Dialog */}
-      <Dialog open={payOpen} onOpenChange={(v) => { setPayOpen(v); if (!v) { setPayingSaleId(null); setPayAmount(""); } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Record Payment</DialogTitle>
-          </DialogHeader>
-          {payingSale && (
-            <div className="space-y-4">
-              <div className="rounded-lg bg-muted p-3 text-sm space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Customer</span>
-                  <span className="font-medium">{getCustomerName(payingSale.customerId)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Sale ID</span>
-                  <span className="font-mono">{payingSale.id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Amount</span>
-                  <span>{formatPKR(payingSale.totalAmount)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Already Paid</span>
-                  <span className="status-healthy">{formatPKR(payingSale.amountPaid)}</span>
-                </div>
-                <div className="flex justify-between font-semibold border-t pt-1 mt-1">
-                  <span>Outstanding</span>
-                  <span className="status-overdue">{formatPKR(payingSale.outstanding)}</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Amount Being Paid Now (PKR)</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  max={payingSale.outstanding}
-                  value={payAmount}
-                  onChange={e => setPayAmount(e.target.value)}
-                  placeholder={`Max: ${formatPKR(payingSale.outstanding)}`}
-                  autoFocus
-                />
-                <p className="text-xs text-muted-foreground">
-                  Outstanding after this payment: {formatPKR(Math.max(0, payingSale.outstanding - Number(payAmount || 0)))}
-                </p>
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1" onClick={() => { setPayOpen(false); setPayingSaleId(null); setPayAmount(""); }}>
-                  Cancel
-                </Button>
-                <Button className="flex-1" onClick={handlePayment}>
-                  Record Payment
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Shared Record Payment Dialog */}
+      <RecordPaymentDialog
+        open={payOpen}
+        onOpenChange={(v) => {
+          setPayOpen(v);
+          if (!v) {
+            setPayingSaleId(undefined);
+            setPayingCustomerId(undefined);
+          }
+        }}
+        preSelectedCustomerId={payingCustomerId}
+        preSelectedSaleId={payingSaleId}
+      />
     </div>
   );
 };
