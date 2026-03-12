@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, Truck, Award, Leaf, ArrowRight, ChevronRight } from "lucide-react";
+import qfLogo from "@/assets/qf-logo.png";
 import { motion } from "framer-motion";
 import heroImg from "@/assets/hero-lentils.jpg";
 import masoor from "@/assets/product-masoor.jpg";
