@@ -202,7 +202,7 @@ const Customers = () => {
                 </div>
                 <div className="rounded-lg border bg-card p-3">
                   <p className="text-xs text-muted-foreground">Outstanding Balance</p>
-                  <p className={`font-semibold text-sm ${getOutstanding(detailCustomer.id) > 0 ? 'text-destructive' : 'text-green-600'}`}>
+                  <p className={`font-semibold text-sm ${getOutstanding(detailCustomer.id) > 0 ? 'text-destructive' : 'status-healthy'}`}>
                     {formatPKR(getOutstanding(detailCustomer.id))}
                   </p>
                 </div>

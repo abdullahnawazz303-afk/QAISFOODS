@@ -221,7 +221,7 @@ const RecordPaymentDialog = ({
                 </strong>{" "}
                 remaining
                 {selectedSale.outstanding - Number(amount) <= 0 && (
-                  <span className="text-green-600 ml-1">— Will be marked as Paid ✓</span>
+                  <span className="status-healthy ml-1">— Will be marked as Paid ✓</span>
                 )}
               </p>
             )}
