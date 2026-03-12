@@ -192,7 +192,7 @@ const RecordPaymentDialog = ({
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Already Paid</span>
-                <span className="text-green-600">{formatPKR(selectedSale.amountPaid)}</span>
+                <span className="status-healthy">{formatPKR(selectedSale.amountPaid)}</span>
               </div>
               <div className="flex justify-between font-semibold border-t pt-1 mt-1">
                 <span>Pending Balance</span>
