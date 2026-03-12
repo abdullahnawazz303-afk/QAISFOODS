@@ -17,6 +17,7 @@ import Customers from "./pages/Customers";
 import CustomerLedger from "./pages/CustomerLedger";
 import Vendors from "./pages/Vendors";
 import VendorLedger from "./pages/VendorLedger";
+import VendorPayables from "./pages/VendorPayables";
 import AdvanceBookings from "./pages/AdvanceBookings";
 import BankCheques from "./pages/BankCheques";
 import Rokar from "./pages/Rokar";
@@ -70,6 +71,7 @@ const App = () => (
           <Route path="/customer-ledger" element={<ProtectedRoute><AppLayout><CustomerLedger /></AppLayout></ProtectedRoute>} />
           <Route path="/vendors" element={<ProtectedRoute><AppLayout><Vendors /></AppLayout></ProtectedRoute>} />
           <Route path="/vendor-ledger" element={<ProtectedRoute><AppLayout><VendorLedger /></AppLayout></ProtectedRoute>} />
+          <Route path="/vendor-payables" element={<ProtectedRoute><AppLayout><VendorPayables /></AppLayout></ProtectedRoute>} />
           <Route path="/advance-bookings" element={<ProtectedRoute><AppLayout><AdvanceBookings /></AppLayout></ProtectedRoute>} />
           <Route path="/bank-cheques" element={<ProtectedRoute><AppLayout><BankCheques /></AppLayout></ProtectedRoute>} />
           <Route path="/cash-flow" element={<ProtectedRoute><AppLayout><Rokar /></AppLayout></ProtectedRoute>} />

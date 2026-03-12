@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useInventoryStore } from "@/stores/inventoryStore";
 import { useVendorStore } from "@/stores/vendorStore";
+import { useVendorPayableStore } from "@/stores/vendorPayableStore";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -10,13 +11,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Plus, Package, AlertTriangle, Layers, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { formatPKR, formatKG, formatDate } from "@/lib/formatters";
+import { formatPKR, formatKG, formatDate, getTodayISO } from "@/lib/formatters";
 import type { Grade } from "@/types";
 
 const ITEM_OPTIONS = ["دال ماش", "دال چنا", "دال مونگ", "چاول", "چنے", "دال مسور", "ماش کی دال"];
 const GRADE_OPTIONS: Grade[] = ['A+', 'A', 'B', 'C'];
+const PAYMENT_TERM_OPTIONS = [
+  { value: "0", label: "Immediate (Cash)" },
+  { value: "7", label: "7 Days" },
+  { value: "15", label: "15 Days" },
+  { value: "30", label: "30 Days" },
+  { value: "45", label: "45 Days" },
+  { value: "60", label: "60 Days" },
+];
 
 interface BatchLineItem {
   itemName: string;
@@ -29,7 +39,8 @@ const emptyLine = (): BatchLineItem => ({ itemName: "", grade: "A" as Grade, pur
 
 const Inventory = () => {
   const { batches, addBatch, getTotalStockValue, getLowStockBatches, getUniqueItemCount } = useInventoryStore();
-  const { vendors } = useVendorStore();
+  const { vendors, addLedgerEntry } = useVendorStore();
+  const { addPayable } = useVendorPayableStore();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [filterItem, setFilterItem] = useState("");
@@ -39,9 +50,11 @@ const Inventory = () => {
   const pageSize = 10;
 
   const [vendorId, setVendorId] = useState("");
-  const [purchaseDate, setPurchaseDate] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState(getTodayISO());
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<BatchLineItem[]>([emptyLine()]);
+  const [isCredit, setIsCredit] = useState(false);
+  const [paymentTermsDays, setPaymentTermsDays] = useState("0");
 
   const addLine = () => setLines(prev => [...prev, emptyLine()]);
   const removeLine = (i: number) => setLines(prev => prev.filter((_, idx) => idx !== i));
@@ -51,9 +64,17 @@ const Inventory = () => {
 
   const resetForm = () => {
     setVendorId("");
-    setPurchaseDate("");
+    setPurchaseDate(getTodayISO());
     setNotes("");
     setLines([emptyLine()]);
+    setIsCredit(false);
+    setPaymentTermsDays("0");
+  };
+
+  const calculateDueDate = (purchaseDateStr: string, termDays: number): string => {
+    const date = new Date(purchaseDateStr);
+    date.setDate(date.getDate() + termDays);
+    return date.toISOString().split('T')[0];
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -63,8 +84,15 @@ const Inventory = () => {
     const validLines = lines.filter(l => l.itemName && l.quantity > 0 && l.purchasePrice > 0);
     if (validLines.length === 0) { toast.error("Add at least one valid item"); return; }
 
+    const vendor = vendors.find(v => v.id === vendorId);
+    const termDays = parseInt(paymentTermsDays);
+    const dueDate = calculateDueDate(purchaseDate, termDays);
+
     validLines.forEach(l => {
-      addBatch({
+      const totalValue = l.quantity * l.purchasePrice;
+      
+      // Add the inventory batch
+      const batchId = addBatch({
         itemName: l.itemName,
         grade: l.grade,
         vendorId,
@@ -72,11 +100,38 @@ const Inventory = () => {
         quantity: l.quantity,
         purchaseDate,
         notes,
+        paymentTermsDays: termDays,
+        isCredit: isCredit,
+      });
+
+      // Add vendor ledger entry (credit = we owe vendor more)
+      addLedgerEntry(vendorId, {
+        date: purchaseDate,
+        type: 'Purchase',
+        description: `Inventory Purchase: ${l.quantity} kg ${l.itemName} (${l.grade})`,
+        debit: 0,
+        credit: totalValue,
+      });
+
+      // Create vendor payable for tracking
+      addPayable({
+        vendorId,
+        batchId,
+        purchaseDate,
+        dueDate,
+        paymentTermsDays: termDays,
+        totalAmount: totalValue,
+        description: `${l.quantity} kg ${l.itemName} (${l.grade}) from ${vendor?.name || 'Vendor'}`,
       });
     });
+
+    const totalPurchaseValue = validLines.reduce((sum, l) => sum + (l.quantity * l.purchasePrice), 0);
+    
     resetForm();
     setOpen(false);
-    toast.success(`${validLines.length} item(s) added to inventory`);
+    toast.success(
+      `${validLines.length} item(s) added to inventory. Payable of ${formatPKR(totalPurchaseValue)} recorded for ${vendor?.name}. ${isCredit ? `Due: ${formatDate(dueDate)}` : 'Payment: Immediate'}`
+    );
   };
 
   const getVendorName = (id: string) => vendors.find(v => v.id === id)?.name || 'Unknown';
@@ -100,7 +155,7 @@ const Inventory = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold">Inventory</h1>
-          <p className="text-sm text-muted-foreground">Batch-based inventory management</p>
+          <p className="text-sm text-muted-foreground">Batch-based inventory management with vendor payables</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -123,6 +178,42 @@ const Inventory = () => {
                   <Label>Purchase Date</Label>
                   <Input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} required />
                 </div>
+              </div>
+
+              {/* Payment Terms Section */}
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-base font-semibold">Credit Purchase</Label>
+                    <p className="text-sm text-muted-foreground">Enable for pay-later purchases</p>
+                  </div>
+                  <Switch 
+                    checked={isCredit} 
+                    onCheckedChange={(checked) => {
+                      setIsCredit(checked);
+                      if (!checked) setPaymentTermsDays("0");
+                    }}
+                  />
+                </div>
+                
+                {isCredit && (
+                  <div className="space-y-2">
+                    <Label>Payment Terms</Label>
+                    <Select value={paymentTermsDays} onValueChange={setPaymentTermsDays}>
+                      <SelectTrigger><SelectValue placeholder="Select payment terms" /></SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_TERM_OPTIONS.filter(opt => opt.value !== "0").map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {purchaseDate && paymentTermsDays !== "0" && (
+                      <p className="text-sm text-muted-foreground">
+                        Due Date: <span className="font-medium text-foreground">{formatDate(calculateDueDate(purchaseDate, parseInt(paymentTermsDays)))}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -165,6 +256,18 @@ const Inventory = () => {
                     </Button>
                   </div>
                 ))}
+                
+                {/* Purchase Summary */}
+                {lines.some(l => l.quantity > 0 && l.purchasePrice > 0) && (
+                  <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Total Purchase Value:</span>
+                      <span className="text-lg font-semibold text-primary">
+                        {formatPKR(lines.reduce((sum, l) => sum + (l.quantity * l.purchasePrice), 0))}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2"><Label>Notes (optional)</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} /></div>

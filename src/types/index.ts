@@ -49,6 +49,8 @@ export interface InventoryBatch {
   remainingQuantity: number;
   purchaseDate: string;
   notes: string;
+  paymentTermsDays: number;
+  isCredit: boolean;
 }
 
 export interface SaleItem {
@@ -172,5 +174,33 @@ export interface WasteEntry {
   originalQuantity: number;
   wasteQuantity: number;
   cleanedQuantity: number;
+  notes: string;
+}
+
+// ── Vendor Payables ──
+export type PaymentMethod = 'Cash' | 'Bank Transfer' | 'Cheque' | 'Other';
+export type PayableStatus = 'Pending' | 'Partially Paid' | 'Paid' | 'Overdue';
+
+export interface VendorPayable {
+  id: string;
+  vendorId: string;
+  batchId: string;
+  purchaseDate: string;
+  dueDate: string;
+  paymentTermsDays: number;
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  status: PayableStatus;
+  description: string;
+}
+
+export interface VendorPayment {
+  id: string;
+  vendorId: string;
+  payableId: string;
+  date: string;
+  amount: number;
+  method: PaymentMethod;
   notes: string;
 }
