@@ -10,13 +10,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Package, AlertTriangle, Layers } from "lucide-react";
+import { Plus, Package, AlertTriangle, Layers, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatPKR, formatKG, formatDate } from "@/lib/formatters";
 import type { Grade } from "@/types";
 
 const ITEM_OPTIONS = ["دال ماش", "دال چنا", "دال مونگ", "چاول", "چنے", "دال مسور", "ماش کی دال"];
 const GRADE_OPTIONS: Grade[] = ['A+', 'A', 'B', 'C'];
+
+interface BatchLineItem {
+  itemName: string;
+  grade: Grade;
+  purchasePrice: number;
+  quantity: number;
+}
+
+const emptyLine = (): BatchLineItem => ({ itemName: "", grade: "A" as Grade, purchasePrice: 0, quantity: 0 });
 
 const Inventory = () => {
   const { batches, addBatch, getTotalStockValue, getLowStockBatches, getUniqueItemCount } = useInventoryStore();
@@ -29,24 +38,45 @@ const Inventory = () => {
   const [page, setPage] = useState(0);
   const pageSize = 10;
 
+  const [vendorId, setVendorId] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState("");
+  const [notes, setNotes] = useState("");
+  const [lines, setLines] = useState<BatchLineItem[]>([emptyLine()]);
+
+  const addLine = () => setLines(prev => [...prev, emptyLine()]);
+  const removeLine = (i: number) => setLines(prev => prev.filter((_, idx) => idx !== i));
+  const updateLine = (i: number, field: keyof BatchLineItem, value: string | number) => {
+    setLines(prev => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l));
+  };
+
+  const resetForm = () => {
+    setVendorId("");
+    setPurchaseDate("");
+    setNotes("");
+    setLines([emptyLine()]);
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    if (vendors.length === 0) {
-      toast.error("Please add a vendor first");
-      return;
-    }
-    addBatch({
-      itemName: fd.get("itemName") as string,
-      grade: fd.get("grade") as Grade,
-      vendorId: fd.get("vendorId") as string,
-      purchasePrice: Number(fd.get("purchasePrice")),
-      quantity: Number(fd.get("quantity")),
-      purchaseDate: fd.get("purchaseDate") as string,
-      notes: fd.get("notes") as string || "",
+    if (vendors.length === 0) { toast.error("Please add a vendor first"); return; }
+    if (!vendorId || !purchaseDate) { toast.error("Select vendor and date"); return; }
+    const validLines = lines.filter(l => l.itemName && l.quantity > 0 && l.purchasePrice > 0);
+    if (validLines.length === 0) { toast.error("Add at least one valid item"); return; }
+
+    validLines.forEach(l => {
+      addBatch({
+        itemName: l.itemName,
+        grade: l.grade,
+        vendorId,
+        purchasePrice: l.purchasePrice,
+        quantity: l.quantity,
+        purchaseDate,
+        notes,
+      });
     });
+    resetForm();
     setOpen(false);
-    toast.success("Batch added to inventory");
+    toast.success(`${validLines.length} item(s) added to inventory`);
   };
 
   const getVendorName = (id: string) => vendors.find(v => v.id === id)?.name || 'Unknown';
