@@ -1,7 +1,8 @@
 import {
   LayoutDashboard, Package, ShoppingCart, Users, BookOpen,
-  Wallet, Landmark, FileText, BarChart3, Leaf, Store, CreditCard, Globe, Trash2
+  Wallet, Landmark, FileText, BarChart3, Store, CreditCard, Globe, Trash2
 } from "lucide-react";
+import qfLogo from "@/assets/qf-logo.png";
 import { Link, useLocation } from "react-router-dom";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
