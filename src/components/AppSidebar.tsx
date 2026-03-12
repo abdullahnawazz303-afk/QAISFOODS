@@ -19,6 +19,7 @@ const navItems = [
   { title: "Customer Ledger", url: "/customer-ledger", icon: BookOpen },
   { title: "Vendors", url: "/vendors", icon: Store },
   { title: "Vendor Ledger", url: "/vendor-ledger", icon: BookOpen },
+  { title: "Vendor Payables", url: "/vendor-payables", icon: Landmark },
   { title: "Advance Bookings", url: "/advance-bookings", icon: FileText },
   { title: "Bank & Cheques", url: "/bank-cheques", icon: CreditCard },
   { title: "Daily Cash Flow", url: "/cash-flow", icon: Wallet },
@@ -50,7 +51,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Operations</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.slice(0, 5).map((item) => {
+              {navItems.slice(0, 8).map((item) => {
                 const isActive = location.pathname === item.url || (item.url !== "/dashboard" && location.pathname.startsWith(item.url));
                 return (
                   <SidebarMenuItem key={item.title}>
@@ -70,7 +71,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Finance</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.slice(5).map((item) => {
+              {navItems.slice(8).map((item) => {
                 const isActive = location.pathname.startsWith(item.url);
                 return (
                   <SidebarMenuItem key={item.title}>

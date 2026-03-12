@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { useCashFlowStore } from "@/stores/cashFlowStore";
 import { useCustomerStore } from "@/stores/customerStore";
 import { useVendorStore } from "@/stores/vendorStore";
+import { useVendorPayableStore } from "@/stores/vendorPayableStore";
 import { useChequeStore } from "@/stores/chequeStore";
 import { useInventoryStore } from "@/stores/inventoryStore";
 import { useBookingStore } from "@/stores/bookingStore";
@@ -18,6 +19,7 @@ const Dashboard = () => {
   const cashFlowStore = useCashFlowStore();
   const customerStore = useCustomerStore();
   const vendorStore = useVendorStore();
+  const vendorPayableStore = useVendorPayableStore();
   const chequeStore = useChequeStore();
   const inventoryStore = useInventoryStore();
   const bookingStore = useBookingStore();
@@ -31,6 +33,9 @@ const Dashboard = () => {
   const inventoryValue = inventoryStore.getTotalStockValue();
   const pendingDeliveries = bookingStore.getPendingDeliveryCount();
   const lowStockCount = inventoryStore.getLowStockBatches().length;
+  const overduePayables = vendorPayableStore.getOverduePayables();
+  const overduePayablesAmount = overduePayables.reduce((sum, p) => sum + p.remainingAmount, 0);
+  const upcomingPayables = vendorPayableStore.getUpcomingPayables(7);
   const companyBalance = companyBalanceStore.getCompanyBalance();
   const sales = salesStore.sales;
   const upcomingBookings = bookingStore.getUpcomingDeliveries(5);
@@ -72,7 +77,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard title="Today's Cash Balance" value={formatPKR(todayBalance)} subtitle="Opening + In - Out" icon={Wallet} />
         <KpiCard title="Total Receivables" value={formatPKR(totalReceivables)} subtitle="Outstanding from customers" icon={Users} />
-        <KpiCard title="Total Payables" value={formatPKR(totalPayables)} subtitle="Outstanding to vendors" icon={Landmark} />
+        <KpiCard title="Total Payables" value={formatPKR(totalPayables)} subtitle={overduePayables.length > 0 ? `${overduePayables.length} overdue` : "Outstanding to vendors"} icon={Landmark} variant={overduePayables.length > 0 ? "danger" : undefined} />
         <KpiCard title="Pending Cheques" value={String(pendingCount)} subtitle={formatPKR(pendingTotal)} icon={FileText} variant={pendingCount > 0 ? "warning" : undefined} />
       </div>
 
@@ -144,6 +149,74 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Vendor Payables Section */}
+      {(overduePayables.length > 0 || upcomingPayables.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {overduePayables.length > 0 && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+              <h3 className="font-semibold text-sm mb-3 text-destructive flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                Overdue Vendor Payments ({formatPKR(overduePayablesAmount)})
+              </h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {overduePayables.slice(0, 5).map(p => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">{getVendorName(p.vendorId)}</TableCell>
+                      <TableCell className="text-destructive">{formatDate(p.dueDate)}</TableCell>
+                      <TableCell className="text-right font-medium">{formatPKR(p.remainingAmount)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {overduePayables.length > 5 && (
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  +{overduePayables.length - 5} more overdue payments
+                </p>
+              )}
+            </div>
+          )}
+          {upcomingPayables.length > 0 && (
+            <div className="rounded-lg border border-warning/30 bg-warning/5 p-4">
+              <h3 className="font-semibold text-sm mb-3 text-warning flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Due in 7 Days ({upcomingPayables.length} payments)
+              </h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {upcomingPayables.slice(0, 5).map(p => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">{getVendorName(p.vendorId)}</TableCell>
+                      <TableCell>{formatDate(p.dueDate)}</TableCell>
+                      <TableCell className="text-right font-medium">{formatPKR(p.remainingAmount)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {upcomingPayables.length > 5 && (
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  +{upcomingPayables.length - 5} more upcoming payments
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
