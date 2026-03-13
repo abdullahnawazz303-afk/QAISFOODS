@@ -1,27 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useInventoryStore } from "@/stores/inventoryStore";
 import { useVendorStore } from "@/stores/vendorStore";
-import { useVendorPayableStore } from "@/stores/vendorPayableStore";
+import { useCashFlowStore } from "@/stores/cashFlowStore";
 import { KpiCard } from "@/components/KpiCard";
 import { EmptyState } from "@/components/EmptyState";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table, TableBody, TableCell, TableHead,
+  TableHeader, TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog, DialogContent, DialogHeader,
+  DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select, SelectContent, SelectItem,
+  SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Package, AlertTriangle, Layers, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Package, AlertTriangle, Layers, Trash2, Loader2, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { formatPKR, formatKG, formatDate, getTodayISO } from "@/lib/formatters";
-import type { Grade } from "@/types";
+import type { Grade, VendorPurchase } from "@/types";
 
-const ITEM_OPTIONS = ["دال ماش", "دال چنا", "دال مونگ", "چاول", "چنے", "دال مسور", "ماش کی دال"];
+const ITEM_OPTIONS = [
+  "دال ماش", "دال چنا", "دال مونگ",
+  "چاول", "چنے", "دال مسور", "ماش کی دال",
+];
 const GRADE_OPTIONS: Grade[] = ['A+', 'A', 'B', 'C'];
 const PAYMENT_TERM_OPTIONS = [
-  { value: "0", label: "Immediate (Cash)" },
-  { value: "7", label: "7 Days" },
+  { value: "7",  label: "7 Days"  },
   { value: "15", label: "15 Days" },
   { value: "30", label: "30 Days" },
   { value: "45", label: "45 Days" },
@@ -35,200 +47,273 @@ interface BatchLineItem {
   quantity: number;
 }
 
-const emptyLine = (): BatchLineItem => ({ itemName: "", grade: "A" as Grade, purchasePrice: 0, quantity: 0 });
+const emptyLine = (): BatchLineItem => ({
+  itemName: "",
+  grade: "A",
+  purchasePrice: 0,
+  quantity: 0,
+});
 
 const Inventory = () => {
-  const { batches, addBatch, getTotalStockValue, getLowStockBatches, getUniqueItemCount } = useInventoryStore();
-  const { vendors, addLedgerEntry } = useVendorStore();
-  const { addPayable } = useVendorPayableStore();
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [filterItem, setFilterItem] = useState("");
+  const {
+    batches, addPurchase, fetchBatches, loading,
+    getTotalStockValue, getLowStockBatches, getUniqueItemCount,
+  } = useInventoryStore();
+
+  const {
+    vendors, purchases,
+    fetchVendors, fetchPurchases, recordPayment,
+  } = useVendorStore();
+
+  const { addEntry: addCashEntry } = useCashFlowStore();
+
+  const [open, setOpen]               = useState(false);
+  const [search, setSearch]           = useState("");
+  const [filterItem, setFilterItem]   = useState("");
   const [filterGrade, setFilterGrade] = useState("");
   const [filterVendor, setFilterVendor] = useState("");
-  const [page, setPage] = useState(0);
+  const [page, setPage]               = useState(0);
   const pageSize = 10;
 
-  const [vendorId, setVendorId] = useState("");
-  const [purchaseDate, setPurchaseDate] = useState(getTodayISO());
-  const [notes, setNotes] = useState("");
-  const [lines, setLines] = useState<BatchLineItem[]>([emptyLine()]);
-  const [isCredit, setIsCredit] = useState(false);
-  const [paymentTermsDays, setPaymentTermsDays] = useState("0");
+  // Add purchase form state
+  const [vendorId, setVendorId]             = useState("");
+  const [purchaseDate, setPurchaseDate]     = useState(getTodayISO());
+  const [notes, setNotes]                   = useState("");
+  const [lines, setLines]                   = useState<BatchLineItem[]>([emptyLine()]);
+  const [isCredit, setIsCredit]             = useState(false);
+  const [paymentTermsDays, setPaymentTermsDays] = useState("30");
+  const [submitting, setSubmitting]         = useState(false);
 
-  const addLine = () => setLines(prev => [...prev, emptyLine()]);
-  const removeLine = (i: number) => setLines(prev => prev.filter((_, idx) => idx !== i));
-  const updateLine = (i: number, field: keyof BatchLineItem, value: string | number) => {
-    setLines(prev => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l));
-  };
+  // Pay dialog state
+  const [payOpen, setPayOpen]               = useState(false);
+  const [payingPurchase, setPayingPurchase] = useState<VendorPurchase | null>(null);
+  const [paySubmitting, setPaySubmitting]   = useState(false);
+
+  useEffect(() => {
+    fetchBatches();
+    fetchVendors();
+    fetchPurchases();
+  }, []);
+
+  const addLine    = () => setLines((p) => [...p, emptyLine()]);
+  const removeLine = (i: number) => setLines((p) => p.filter((_, idx) => idx !== i));
+  const updateLine = (i: number, field: keyof BatchLineItem, value: string | number) =>
+    setLines((p) => p.map((l, idx) => idx === i ? { ...l, [field]: value } : l));
 
   const resetForm = () => {
-    setVendorId("");
-    setPurchaseDate(getTodayISO());
-    setNotes("");
-    setLines([emptyLine()]);
-    setIsCredit(false);
-    setPaymentTermsDays("0");
+    setVendorId(""); setPurchaseDate(getTodayISO());
+    setNotes(""); setLines([emptyLine()]);
+    setIsCredit(false); setPaymentTermsDays("30");
   };
 
-  const calculateDueDate = (purchaseDateStr: string, termDays: number): string => {
-    const date = new Date(purchaseDateStr);
-    date.setDate(date.getDate() + termDays);
-    return date.toISOString().split('T')[0];
+  const formatDueDate = (date: string, days: number) => {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return formatDate(d.toISOString().split("T")[0]);
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (vendors.length === 0) { toast.error("Please add a vendor first"); return; }
-    if (!vendorId || !purchaseDate) { toast.error("Select vendor and date"); return; }
-    const validLines = lines.filter(l => l.itemName && l.quantity > 0 && l.purchasePrice > 0);
-    if (validLines.length === 0) { toast.error("Add at least one valid item"); return; }
+  // ── Match a batch to its purchase record
+  const getPurchaseForBatch = (batchId: string): VendorPurchase | undefined => {
+    const batch = batches.find(b => b.id === batchId);
+    if (!batch?.purchaseId) return undefined;
+    return purchases.find(p => p.id === batch.purchaseId);
+  };
 
-    const vendor = vendors.find(v => v.id === vendorId);
-    const termDays = parseInt(paymentTermsDays);
-    const dueDate = calculateDueDate(purchaseDate, termDays);
-
-    validLines.forEach(l => {
-      const totalValue = l.quantity * l.purchasePrice;
-      
-      // Add the inventory batch
-      const batchId = addBatch({
-        itemName: l.itemName,
-        grade: l.grade,
-        vendorId,
-        purchasePrice: l.purchasePrice,
-        quantity: l.quantity,
-        purchaseDate,
-        notes,
-        paymentTermsDays: termDays,
-        isCredit: isCredit,
-      });
-
-      // Add vendor ledger entry (credit = we owe vendor more)
-      addLedgerEntry(vendorId, {
-        date: purchaseDate,
-        type: 'Purchase',
-        description: `Inventory Purchase: ${l.quantity} kg ${l.itemName} (${l.grade})`,
-        debit: 0,
-        credit: totalValue,
-      });
-
-      // Create vendor payable for tracking
-      addPayable({
-        vendorId,
-        batchId,
-        purchaseDate,
-        dueDate,
-        paymentTermsDays: termDays,
-        totalAmount: totalValue,
-        description: `${l.quantity} kg ${l.itemName} (${l.grade}) from ${vendor?.name || 'Vendor'}`,
-      });
-    });
-
-    const totalPurchaseValue = validLines.reduce((sum, l) => sum + (l.quantity * l.purchasePrice), 0);
-    
-    resetForm();
-    setOpen(false);
-    toast.success(
-      `${validLines.length} item(s) added to inventory. Payable of ${formatPKR(totalPurchaseValue)} recorded for ${vendor?.name}. ${isCredit ? `Due: ${formatDate(dueDate)}` : 'Payment: Immediate'}`
+  // ── Payment status badge
+  const paymentBadge = (purchase: VendorPurchase | undefined) => {
+    if (!purchase) return <span className="text-muted-foreground text-xs">—</span>;
+    if (purchase.paymentStatus === 'Paid')
+      return <Badge variant="default" className="text-xs">Paid</Badge>;
+    if (purchase.paymentStatus === 'Partially Paid')
+      return <Badge variant="secondary" className="text-xs">Partial</Badge>;
+    const today = getTodayISO();
+    const isOverdue = purchase.dueDate && purchase.dueDate < today;
+    return (
+      <Badge variant="destructive" className="text-xs">
+        {isOverdue ? 'Overdue' : 'Unpaid'}
+      </Badge>
     );
   };
 
-  const getVendorName = (id: string) => vendors.find(v => v.id === id)?.name || 'Unknown';
+  // ── Submit new purchase
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!vendorId) { toast.error("Please select a vendor"); return; }
 
-  const filtered = batches.filter(b => {
-    if (filterItem && b.itemName !== filterItem) return false;
-    if (filterGrade && b.grade !== filterGrade) return false;
+    const validLines = lines.filter(l => l.itemName && l.quantity > 0 && l.purchasePrice > 0);
+    if (validLines.length === 0) {
+      toast.error("Add at least one valid item with quantity and price");
+      return;
+    }
+
+    setSubmitting(true);
+    const ok = await addPurchase({
+      vendorId, purchaseDate, isCredit,
+      paymentTermsDays: isCredit ? parseInt(paymentTermsDays) : 0,
+      notes, lines: validLines,
+    });
+    setSubmitting(false);
+
+    if (ok) {
+      const totalValue = validLines.reduce((s, l) => s + l.quantity * l.purchasePrice, 0);
+      const vendor = vendors.find(v => v.id === vendorId);
+      toast.success(`${validLines.length} batch(es) added — ${formatPKR(totalValue)} for ${vendor?.name}`);
+      resetForm();
+      setOpen(false);
+      fetchPurchases(); // refresh payment status
+    } else {
+      toast.error("Failed to save purchase.");
+    }
+  };
+
+  // ── Pay a purchase from inventory table
+  const handlePayOpen = (purchase: VendorPurchase) => {
+    setPayingPurchase(purchase);
+    setPayOpen(true);
+  };
+
+  const handlePaySubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!payingPurchase) return;
+    const fd = new FormData(e.currentTarget);
+    const amount = Number(fd.get("amount"));
+    const method = fd.get("method") as string;
+    const payNotes = fd.get("notes") as string || "";
+
+    if (amount <= 0 || amount > payingPurchase.outstanding) {
+      toast.error("Invalid amount"); return;
+    }
+
+    setPaySubmitting(true);
+    await recordPayment(payingPurchase.id, payingPurchase.vendorId, amount, method, payNotes);
+
+    // Record cash outflow
+    await addCashEntry(getTodayISO(), {
+      type: 'out',
+      category: 'Vendor Payment',
+      amount,
+      description: `Payment for ${payingPurchase.vendorName || ''} — ${payingPurchase.items.map((i: any) => i.itemName).join(', ')}`,
+    });
+
+    setPaySubmitting(false);
+    setPayOpen(false);
+    setPayingPurchase(null);
+    toast.success("Payment recorded");
+  };
+
+  const getVendorName = (id: string) => vendors.find(v => v.id === id)?.name ?? "Unknown";
+
+  const filtered = batches.filter((b) => {
+    if (filterItem   && b.itemName !== filterItem)   return false;
+    if (filterGrade  && b.grade    !== filterGrade)  return false;
     if (filterVendor && b.vendorId !== filterVendor) return false;
     if (search) {
       const q = search.toLowerCase();
-      return b.itemName.toLowerCase().includes(q) || b.batchRef.toLowerCase().includes(q) || getVendorName(b.vendorId).toLowerCase().includes(q);
+      return (
+        b.itemName.toLowerCase().includes(q) ||
+        b.batchRef.toLowerCase().includes(q) ||
+        getVendorName(b.vendorId).toLowerCase().includes(q)
+      );
     }
     return true;
   });
 
-  const paged = filtered.slice(page * pageSize, (page + 1) * pageSize);
+  const sorted = [...filtered].sort((a, b) => new Date(b.bookingDate).getTime() - new Date(a.bookingDate).getTime());
+const paged = sorted.slice(page * pageSize, (page + 1) * pageSize);
   const totalPages = Math.ceil(filtered.length / pageSize);
 
   return (
     <div className="space-y-6">
+
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-display font-bold">Inventory</h1>
-          <p className="text-sm text-muted-foreground">Batch-based inventory management with vendor payables</p>
+          <p className="text-sm text-muted-foreground">
+            Batch-based inventory — each purchase creates a vendor payable automatically
+          </p>
         </div>
+
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-2" /> Add Batch</Button>
+            <Button><Plus className="h-4 w-4 mr-2" /> Add Purchase</Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>Add Inventory Batch</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle>New Purchase (Vendor → Inventory)</DialogTitle>
+            </DialogHeader>
+
             <form onSubmit={handleSubmit} className="space-y-4">
+
+              {/* Vendor + Date */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Vendor</Label>
+                  <Label>Vendor *</Label>
                   <Select value={vendorId} onValueChange={setVendorId} required>
                     <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
                     <SelectContent>
-                      {vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+                      {vendors.length === 0
+                        ? <SelectItem value="none" disabled>No vendors yet</SelectItem>
+                        : vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)
+                      }
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Purchase Date</Label>
-                  <Input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} required />
+                  <Label>Purchase Date *</Label>
+                  <Input type="date" value={purchaseDate}
+                    onChange={e => setPurchaseDate(e.target.value)} required />
                 </div>
               </div>
 
-              {/* Payment Terms Section */}
+              {/* Payment Terms */}
               <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label className="text-base font-semibold">Credit Purchase</Label>
-                    <p className="text-sm text-muted-foreground">Enable for pay-later purchases</p>
+                    <p className="text-sm text-muted-foreground">Enable if payment will be made later</p>
                   </div>
-                  <Switch 
-                    checked={isCredit} 
-                    onCheckedChange={(checked) => {
-                      setIsCredit(checked);
-                      if (!checked) setPaymentTermsDays("0");
-                    }}
-                  />
+                  <Switch checked={isCredit} onCheckedChange={v => { setIsCredit(v); if (!v) setPaymentTermsDays("30"); }} />
                 </div>
-                
-                {isCredit && (
+                {isCredit ? (
                   <div className="space-y-2">
                     <Label>Payment Terms</Label>
                     <Select value={paymentTermsDays} onValueChange={setPaymentTermsDays}>
-                      <SelectTrigger><SelectValue placeholder="Select payment terms" /></SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {PAYMENT_TERM_OPTIONS.filter(opt => opt.value !== "0").map(opt => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                        ))}
+                        {PAYMENT_TERM_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    {purchaseDate && paymentTermsDays !== "0" && (
+                    {purchaseDate && (
                       <p className="text-sm text-muted-foreground">
-                        Due Date: <span className="font-medium text-foreground">{formatDate(calculateDueDate(purchaseDate, parseInt(paymentTermsDays)))}</span>
+                        Due Date: <span className="font-medium text-foreground">
+                          {formatDueDate(purchaseDate, parseInt(paymentTermsDays))}
+                        </span>
                       </p>
                     )}
                   </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Cash purchase — full amount marked as paid immediately.
+                  </p>
                 )}
               </div>
 
+              {/* Line Items */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Items</Label>
+                  <Label className="text-base font-semibold">Items *</Label>
                   <Button type="button" variant="outline" size="sm" onClick={addLine}>
                     <Plus className="h-3 w-3 mr-1" /> Add Item
                   </Button>
                 </div>
+
                 {lines.map((line, i) => (
                   <div key={i} className="grid grid-cols-[1fr_80px_1fr_1fr_32px] gap-2 items-end rounded-md border p-3 bg-muted/30">
                     <div className="space-y-1">
                       <Label className="text-xs">Item</Label>
                       <Select value={line.itemName} onValueChange={v => updateLine(i, "itemName", v)}>
-                        <SelectTrigger className="h-9"><SelectValue placeholder="Item" /></SelectTrigger>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Select item" /></SelectTrigger>
                         <SelectContent>
                           {ITEM_OPTIONS.map(it => <SelectItem key={it} value={it}>{it}</SelectItem>)}
                         </SelectContent>
@@ -244,62 +329,83 @@ const Inventory = () => {
                       </Select>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Price/kg</Label>
-                      <Input type="number" className="h-9" value={line.purchasePrice || ""} onChange={e => updateLine(i, "purchasePrice", Number(e.target.value))} placeholder="PKR" />
+                      <Label className="text-xs">Price/kg (PKR)</Label>
+                      <Input type="number" className="h-9" min={1}
+                        value={line.purchasePrice || ""}
+                        onChange={e => updateLine(i, "purchasePrice", Number(e.target.value))}
+                        placeholder="0" />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Qty (kg)</Label>
-                      <Input type="number" className="h-9" value={line.quantity || ""} onChange={e => updateLine(i, "quantity", Number(e.target.value))} placeholder="kg" />
+                      <Input type="number" className="h-9" min={1}
+                        value={line.quantity || ""}
+                        onChange={e => updateLine(i, "quantity", Number(e.target.value))}
+                        placeholder="0" />
                     </div>
-                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={() => removeLine(i)} disabled={lines.length === 1}>
+                    <Button type="button" variant="ghost" size="icon"
+                      className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                      onClick={() => removeLine(i)} disabled={lines.length === 1}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
-                
-                {/* Purchase Summary */}
+
                 {lines.some(l => l.quantity > 0 && l.purchasePrice > 0) && (
-                  <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Total Purchase Value:</span>
-                      <span className="text-lg font-semibold text-primary">
-                        {formatPKR(lines.reduce((sum, l) => sum + (l.quantity * l.purchasePrice), 0))}
-                      </span>
-                    </div>
+                  <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Total Purchase Value</span>
+                    <span className="text-lg font-semibold text-primary">
+                      {formatPKR(lines.reduce((s, l) => s + l.quantity * l.purchasePrice, 0))}
+                    </span>
                   </div>
                 )}
               </div>
 
-              <div className="space-y-2"><Label>Notes (optional)</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} /></div>
-              <Button type="submit" className="w-full">Add {lines.length > 1 ? `${lines.length} Items` : "Batch"}</Button>
+              <div className="space-y-2">
+                <Label>Notes (optional)</Label>
+                <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} />
+              </div>
+
+              <Button type="submit" className="w-full" disabled={submitting}>
+                {submitting
+                  ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
+                  : `Save Purchase (${lines.filter(l => l.itemName && l.quantity > 0).length} item${lines.length > 1 ? "s" : ""})`
+                }
+              </Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KpiCard title="Unique Items" value={String(getUniqueItemCount())} subtitle="In stock" icon={Layers} />
-        <KpiCard title="Total Stock Value" value={formatPKR(getTotalStockValue())} subtitle="All batches" icon={Package} />
-        <KpiCard title="Low Stock Alerts" value={String(getLowStockBatches().length)} subtitle="Below 100 kg" icon={AlertTriangle} variant={getLowStockBatches().length > 0 ? "danger" : undefined} />
+        <KpiCard title="Unique Items" value={String(getUniqueItemCount())}
+          subtitle="In stock" icon={Layers} />
+        <KpiCard title="Total Stock Value" value={formatPKR(getTotalStockValue())}
+          subtitle="All batches" icon={Package} />
+        <KpiCard title="Low Stock Alerts" value={String(getLowStockBatches().length)}
+          subtitle="Below 100 kg" icon={AlertTriangle}
+          variant={getLowStockBatches().length > 0 ? "danger" : undefined} />
       </div>
 
+      {/* Filters */}
       <div className="flex flex-wrap gap-2">
-        <Input placeholder="Search batches..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} className="max-w-xs" />
-        <Select value={filterItem} onValueChange={(v) => { setFilterItem(v === "all" ? "" : v); setPage(0); }}>
+        <Input placeholder="Search batches..." value={search}
+          onChange={e => { setSearch(e.target.value); setPage(0); }} className="max-w-xs" />
+        <Select value={filterItem || "all"} onValueChange={v => { setFilterItem(v === "all" ? "" : v); setPage(0); }}>
           <SelectTrigger className="w-[160px]"><SelectValue placeholder="All Items" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Items</SelectItem>
             {ITEM_OPTIONS.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={filterGrade} onValueChange={(v) => { setFilterGrade(v === "all" ? "" : v); setPage(0); }}>
+        <Select value={filterGrade || "all"} onValueChange={v => { setFilterGrade(v === "all" ? "" : v); setPage(0); }}>
           <SelectTrigger className="w-[120px]"><SelectValue placeholder="All Grades" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Grades</SelectItem>
             {GRADE_OPTIONS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={filterVendor} onValueChange={(v) => { setFilterVendor(v === "all" ? "" : v); setPage(0); }}>
+        <Select value={filterVendor || "all"} onValueChange={v => { setFilterVendor(v === "all" ? "" : v); setPage(0); }}>
           <SelectTrigger className="w-[160px]"><SelectValue placeholder="All Vendors" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Vendors</SelectItem>
@@ -308,8 +414,15 @@ const Inventory = () => {
         </Select>
       </div>
 
-      {batches.length === 0 ? (
-        <EmptyState title="No inventory yet" description="Add your first batch to start tracking inventory." actionLabel="Add First Batch" onAction={() => setOpen(true)} />
+      {/* Table */}
+      {loading ? (
+        <div className="flex items-center justify-center h-48 text-muted-foreground gap-2">
+          <Loader2 className="h-5 w-5 animate-spin" /><span>Loading inventory...</span>
+        </div>
+      ) : batches.length === 0 ? (
+        <EmptyState title="No inventory yet"
+          description="Add your first purchase to start tracking inventory."
+          actionLabel="Add First Purchase" onAction={() => setOpen(true)} />
       ) : (
         <>
           <div className="rounded-lg border">
@@ -321,38 +434,142 @@ const Inventory = () => {
                   <TableHead>Grade</TableHead>
                   <TableHead>Vendor</TableHead>
                   <TableHead className="text-right">Price/kg</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead className="text-right">Remaining</TableHead>
+                  <TableHead className="text-right">Total Qty</TableHead>
+                  <TableHead className="text-right">Stock Left</TableHead>
+                  <TableHead className="text-right">Purchase Total</TableHead>
+                  <TableHead className="text-right">Remaining Due</TableHead>
+                  <TableHead>Payment</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paged.map(b => (
-                  <TableRow key={b.id}>
-                    <TableCell className="font-mono text-sm">{b.batchRef}</TableCell>
-                    <TableCell className="font-medium">{b.itemName}</TableCell>
-                    <TableCell>{b.grade}</TableCell>
-                    <TableCell>{getVendorName(b.vendorId)}</TableCell>
-                    <TableCell className="text-right">{formatPKR(b.purchasePrice)}</TableCell>
-                    <TableCell className="text-right">{formatKG(b.quantity)}</TableCell>
-                    <TableCell className={`text-right font-medium ${b.remainingQuantity < 100 ? 'status-overdue' : 'status-healthy'}`}>{formatKG(b.remainingQuantity)}</TableCell>
-                    <TableCell>{formatDate(b.purchaseDate)}</TableCell>
-                  </TableRow>
-                ))}
+                {paged.map(b => {
+                  const purchase = getPurchaseForBatch(b.id);
+                  const totalPurchaseValue = b.quantity * b.purchasePrice;
+                  const remainingDue = purchase?.outstanding ?? 0;
+
+                  return (
+                    <TableRow key={b.id}>
+                      <TableCell className="font-mono text-sm text-muted-foreground">
+                        {b.batchRef}
+                      </TableCell>
+                      <TableCell className="font-medium">{b.itemName}</TableCell>
+                      <TableCell>{b.grade}</TableCell>
+                      <TableCell>{getVendorName(b.vendorId)}</TableCell>
+                      <TableCell className="text-right">{formatPKR(b.purchasePrice)}</TableCell>
+                      <TableCell className="text-right">{formatKG(b.quantity)}</TableCell>
+                      <TableCell className={`text-right font-medium ${b.remainingQuantity < 100 ? "text-red-500" : "text-green-600"}`}>
+                        {formatKG(b.remainingQuantity)}
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {formatPKR(totalPurchaseValue)}
+                      </TableCell>
+                      <TableCell className={`text-right font-medium ${remainingDue > 0 ? 'text-destructive' : 'text-green-600'}`}>
+                        {remainingDue > 0 ? formatPKR(remainingDue) : '—'}
+                      </TableCell>
+                      <TableCell>
+                        {paymentBadge(purchase)}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(b.purchaseDate)}
+                      </TableCell>
+                      <TableCell>
+                        {purchase && purchase.outstanding > 0 && (
+                          <Button size="sm" variant="outline"
+                            onClick={() => handlePayOpen(purchase)}
+                            title="Pay this vendor">
+                            <CreditCard className="h-3 w-3 mr-1" /> Pay
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
+
           {totalPages > 1 && (
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, filtered.length)} of {filtered.length}</p>
+              <p className="text-sm text-muted-foreground">
+                Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, filtered.length)} of {filtered.length}
+              </p>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Previous</Button>
-                <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Next</Button>
+                <Button variant="outline" size="sm" disabled={page === 0}
+                  onClick={() => setPage(p => p - 1)}>Previous</Button>
+                <Button variant="outline" size="sm" disabled={page >= totalPages - 1}
+                  onClick={() => setPage(p => p + 1)}>Next</Button>
               </div>
             </div>
           )}
         </>
       )}
+
+      {/* Pay Dialog */}
+      <Dialog open={payOpen} onOpenChange={v => { setPayOpen(v); if (!v) setPayingPurchase(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Pay Vendor for this Purchase</DialogTitle></DialogHeader>
+          {payingPurchase && (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-muted p-3 text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Vendor</span>
+                  <span className="font-medium">{payingPurchase.vendorName || getVendorName(payingPurchase.vendorId)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Items</span>
+                  <span className="text-right">{payingPurchase.items.map((i: any) => i.itemName).join(', ')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Purchase Total</span>
+                  <span>{formatPKR(payingPurchase.totalAmount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Already Paid</span>
+                  <span className="text-green-600">{formatPKR(payingPurchase.amountPaid)}</span>
+                </div>
+                <div className="flex justify-between font-semibold border-t pt-1 mt-1">
+                  <span>Remaining Due</span>
+                  <span className="text-destructive">{formatPKR(payingPurchase.outstanding)}</span>
+                </div>
+              </div>
+
+              <form onSubmit={handlePaySubmit} className="space-y-3">
+                <div className="space-y-2">
+                  <Label>Amount to Pay (PKR)</Label>
+                  <Input name="amount" type="number" min="1"
+                    max={payingPurchase.outstanding} required autoFocus
+                    placeholder={`Max: ${formatPKR(payingPurchase.outstanding)}`} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Method</Label>
+                  <Select name="method" defaultValue="Cash">
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cash">Cash</SelectItem>
+                      <SelectItem value="Bank">Bank Transfer</SelectItem>
+                      <SelectItem value="Cheque">Cheque</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Notes</Label>
+                  <Input name="notes" placeholder="Optional" />
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="flex-1"
+                    onClick={() => setPayOpen(false)}>Cancel</Button>
+                  <Button type="submit" className="flex-1" disabled={paySubmitting}>
+                    {paySubmitting ? "Saving..." : "Record Payment"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

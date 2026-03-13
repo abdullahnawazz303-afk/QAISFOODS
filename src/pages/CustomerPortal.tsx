@@ -1,333 +1,434 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { useOnlineOrderStore } from "@/stores/onlineOrderStore";
 import { useCustomerStore } from "@/stores/customerStore";
-import { useSalesStore } from "@/stores/salesStore";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem,
+  SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Table, TableBody, TableCell, TableHead,
+  TableHeader, TableRow,
+} from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Leaf, LogOut, User, ShoppingCart, History, Plus, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Textarea } from "@/components/ui/textarea";
+import { Trash2, Plus, LogOut, Loader2, Package } from "lucide-react";
 import { toast } from "sonner";
-import { formatPKR, formatDate } from "@/lib/formatters";
+import { formatDate, formatPKR, formatKG } from "@/lib/formatters";
 import type { Grade, OnlineOrderItem } from "@/types";
 
-const PRODUCTS = ["Dal Mash", "Dal Chana", "Dal Moong", "Masoor", "Rice", "Chickpeas"];
-const GRADES: Grade[] = ["A+", "A", "B", "C"];
+const ITEM_OPTIONS = [
+  "دال ماش", "دال چنا", "دال مونگ",
+  "چاول", "چنے", "دال مسور", "ماش کی دال",
+];
+const GRADE_OPTIONS: Grade[] = ["A+", "A", "B", "C"];
 
-export default function CustomerPortal() {
-  const { userEmail, logout } = useAuthStore();
-  const navigate = useNavigate();
-  const onlineOrderStore = useOnlineOrderStore();
-  const customerStore = useCustomerStore();
-  const salesStore = useSalesStore();
+const statusVariant = (s: string) => {
+  switch (s) {
+    case "Pending":   return "secondary";
+    case "Confirmed": return "default";
+    case "Delivered": return "default";
+    case "Cancelled": return "destructive";
+    default:          return "secondary";
+  }
+};
 
-  const [orderOpen, setOrderOpen] = useState(false);
+const CustomerPortal = () => {
+  const { logout, customerId, userEmail } = useAuthStore();
+  const { orders, fetchMyOrders, addOrder, loading: ordersLoading } = useOnlineOrderStore();
+  const { fetchLedger, ledgerEntries } = useCustomerStore();
+
+  // Customer profile from DB
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+
+  // New order form
+  const [orderOpen, setOrderOpen]   = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [orderItems, setOrderItems] = useState<OnlineOrderItem[]>([]);
-  const [itemName, setItemName] = useState("");
-  const [itemGrade, setItemGrade] = useState<Grade>("A");
-  const [itemQty, setItemQty] = useState("");
-  const [itemNotes, setItemNotes] = useState("");
-  const [custName, setCustName] = useState("");
-  const [custPhone, setCustPhone] = useState("");
-  const [custCity, setCustCity] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [orderNotes, setOrderNotes] = useState("");
 
-  const email = userEmail || "";
-  const myOrders = onlineOrderStore.getOrdersByEmail(email);
+  // Current item being added
+  const [currentItem, setCurrentItem]   = useState("");
+  const [currentGrade, setCurrentGrade] = useState<Grade>("A");
+  const [currentQty, setCurrentQty]     = useState("");
 
-  // Try to find a matching customer in the system
-  const matchedCustomer = customerStore.customers.find(
-    (c) => c.name.toLowerCase() === email.replace(/@.*/, "").toLowerCase() || c.phone === custPhone
-  );
-  const customerLedger = matchedCustomer ? customerStore.ledgerEntries[matchedCustomer.id] || [] : [];
-  const outstanding = matchedCustomer ? customerStore.getOutstanding(matchedCustomer.id) : 0;
-  const customerSales = matchedCustomer
-    ? salesStore.sales.filter((s) => s.customerId === matchedCustomer.id)
-    : [];
+  useEffect(() => {
+    if (!customerId) return;
+    fetchMyOrders(customerId);
+    fetchLedger(customerId);
+    loadCustomerProfile();
+  }, [customerId]);
 
-  const addItemToOrder = () => {
-    if (!itemName || !itemQty || Number(itemQty) <= 0) {
-      toast.error("Please fill item name and quantity");
-      return;
+  const loadCustomerProfile = async () => {
+    if (!customerId) return;
+    const { data } = await supabase
+      .from("customers")
+      .select("name, phone")
+      .eq("id", customerId)
+      .single();
+    if (data) {
+      setCustomerName(data.name ?? "");
+      setCustomerPhone(data.phone ?? "");
     }
-    setOrderItems([...orderItems, { itemName, grade: itemGrade, quantity: Number(itemQty), notes: itemNotes }]);
-    setItemName("");
-    setItemQty("");
-    setItemNotes("");
   };
 
-  const removeItem = (idx: number) => setOrderItems(orderItems.filter((_, i) => i !== idx));
+  // Ledger for this customer
+  const myLedger = customerId ? (ledgerEntries[customerId] ?? []) : [];
+  const outstanding =
+    myLedger.length > 0 ? myLedger[myLedger.length - 1].balance : 0;
 
-  const submitOrder = () => {
-    if (orderItems.length === 0) { toast.error("Add at least one item"); return; }
-    if (!custName || !custPhone || !custCity) { toast.error("Fill your contact details"); return; }
-    onlineOrderStore.addOrder({
-      customerEmail: email,
-      customerName: custName,
-      customerPhone: custPhone,
-      customerCity: custCity,
-      items: orderItems,
-    });
-    toast.success("Order placed successfully!");
+  // ── Add item to order
+  const addOrderItem = () => {
+    if (!currentItem)      { toast.error("Select an item"); return; }
+    const qty = Number(currentQty);
+    if (qty <= 0)          { toast.error("Enter a valid quantity"); return; }
+
+    setOrderItems((prev) => [
+      ...prev,
+      { itemName: currentItem, grade: currentGrade, quantity: qty, notes: "" },
+    ]);
+    setCurrentItem("");
+    setCurrentGrade("A");
+    setCurrentQty("");
+  };
+
+  const removeOrderItem = (idx: number) =>
+    setOrderItems((prev) => prev.filter((_, i) => i !== idx));
+
+  const resetOrderForm = () => {
     setOrderItems([]);
-    setOrderOpen(false);
+    setDeliveryDate("");
+    setOrderNotes("");
+    setCurrentItem("");
+    setCurrentGrade("A");
+    setCurrentQty("");
   };
 
-  const handleLogout = () => { logout(); navigate("/"); };
+  // ── Submit order
+  const handleOrderSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerId)          { toast.error("Session error. Please log in again."); return; }
+    if (orderItems.length === 0) { toast.error("Add at least one item"); return; }
 
-  const statusColor = (s: string) => {
-    switch (s) {
-      case "Pending": return "secondary";
-      case "Confirmed": return "default";
-      case "Rejected": return "destructive";
-      case "Delivered": return "default";
-      default: return "secondary";
+    setSubmitting(true);
+    const id = await addOrder(customerId, orderItems, orderNotes, deliveryDate || undefined);
+    setSubmitting(false);
+
+    if (id) {
+      toast.success("Order placed! The factory will confirm it shortly.");
+      resetOrderForm();
+      setOrderOpen(false);
+    } else {
+      toast.error("Failed to place order. Please try again.");
     }
   };
 
   return (
-    <div className="min-h-screen bg-secondary/30">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur">
-        <div className="max-w-5xl mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-              <Leaf className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-lg text-foreground">Qais Foods</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground hidden sm:inline">{email}</span>
-            <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background">
 
-      <main className="max-w-5xl mx-auto px-4 py-8 space-y-6">
-        <div className="flex items-center justify-between">
+      {/* ── Top bar ── */}
+      <div className="border-b bg-card px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <Package className="h-4 w-4 text-primary" />
+          </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Customer Portal</h1>
-            <p className="text-sm text-muted-foreground">Welcome back, {email}</p>
+            <p className="font-semibold text-sm">{customerName || "Customer Portal"}</p>
+            <p className="text-xs text-muted-foreground">{userEmail}</p>
           </div>
-          <Dialog open={orderOpen} onOpenChange={setOrderOpen}>
-            <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-2" /> Place Order</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Place New Order</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label>Your Name *</Label>
-                    <Input value={custName} onChange={(e) => setCustName(e.target.value)} placeholder="Full name" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Phone *</Label>
-                    <Input value={custPhone} onChange={(e) => setCustPhone(e.target.value)} placeholder="+92..." />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>City *</Label>
-                    <Input value={custCity} onChange={(e) => setCustCity(e.target.value)} placeholder="City" />
-                  </div>
-                </div>
+        </div>
+        <Button variant="outline" size="sm" onClick={logout}>
+          <LogOut className="h-4 w-4 mr-2" /> Logout
+        </Button>
+      </div>
 
-                <div className="border rounded-lg p-3 space-y-3">
-                  <h4 className="font-medium text-sm">Add Items</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <Select value={itemName} onValueChange={setItemName}>
-                      <SelectTrigger><SelectValue placeholder="Product" /></SelectTrigger>
-                      <SelectContent>
-                        {PRODUCTS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Select value={itemGrade} onValueChange={(v) => setItemGrade(v as Grade)}>
-                      <SelectTrigger><SelectValue placeholder="Grade" /></SelectTrigger>
-                      <SelectContent>
-                        {GRADES.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Input type="number" placeholder="Qty (kg)" value={itemQty} onChange={(e) => setItemQty(e.target.value)} />
-                    <Button type="button" onClick={addItemToOrder} size="sm" className="h-10">Add</Button>
-                  </div>
-                  {orderItems.length > 0 && (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Item</TableHead>
-                          <TableHead>Grade</TableHead>
-                          <TableHead>Qty (kg)</TableHead>
-                          <TableHead></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {orderItems.map((it, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell>{it.itemName}</TableCell>
-                            <TableCell>{it.grade}</TableCell>
-                            <TableCell>{it.quantity}</TableCell>
-                            <TableCell>
-                              <Button variant="ghost" size="icon" onClick={() => removeItem(idx)}>
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </div>
-                <Button onClick={submitOrder} className="w-full">Submit Order</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+      <div className="max-w-4xl mx-auto p-4 space-y-6">
+
+        {/* ── Summary cards ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-2">
+          <div className="rounded-lg border bg-card p-4">
+            <p className="text-xs text-muted-foreground">Total Orders</p>
+            <p className="text-2xl font-bold">{orders.length}</p>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <p className="text-xs text-muted-foreground">Pending Orders</p>
+            <p className="text-2xl font-bold text-amber-600">
+              {orders.filter((o) => o.status === "Pending").length}
+            </p>
+          </div>
+          <div className="rounded-lg border bg-card p-4 col-span-2 sm:col-span-1">
+            <p className="text-xs text-muted-foreground">Outstanding Balance</p>
+            <p className={`text-2xl font-bold ${outstanding > 0 ? "text-red-500" : "text-green-600"}`}>
+              {formatPKR(outstanding)}
+            </p>
+          </div>
         </div>
 
-        <Tabs defaultValue="orders" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="orders"><ShoppingCart className="h-4 w-4 mr-1" /> My Orders</TabsTrigger>
-            <TabsTrigger value="history"><History className="h-4 w-4 mr-1" /> Deal History</TabsTrigger>
-            <TabsTrigger value="profile"><User className="h-4 w-4 mr-1" /> Profile</TabsTrigger>
+        {/* ── Tabs ── */}
+        <Tabs defaultValue="orders">
+          <TabsList className="w-full sm:w-auto">
+            <TabsTrigger value="orders">My Orders</TabsTrigger>
+            <TabsTrigger value="ledger">My Ledger</TabsTrigger>
           </TabsList>
 
-          {/* My Orders */}
-          <TabsContent value="orders">
-            {myOrders.length === 0 ? (
-              <Card><CardContent className="p-8 text-center text-muted-foreground">
-                No orders yet. Click "Place Order" to get started.
-              </CardContent></Card>
-            ) : (
-              <Card>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Order ID</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Items</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {myOrders.map((o) => (
-                        <TableRow key={o.id}>
-                          <TableCell className="font-mono text-sm">{o.id}</TableCell>
-                          <TableCell>{formatDate(o.date)}</TableCell>
-                          <TableCell>
-                            {o.items.map((i) => `${i.itemName} ${i.grade} (${i.quantity} kg)`).join(", ")}
-                          </TableCell>
-                          <TableCell><Badge variant={statusColor(o.status)}>{o.status}</Badge></TableCell>
-                        </TableRow>
+          {/* ── Orders Tab ── */}
+          <TabsContent value="orders" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">Order History</h2>
+
+              <Dialog open={orderOpen} onOpenChange={(v) => { setOrderOpen(v); if (!v) resetOrderForm(); }}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="h-4 w-4 mr-2" /> Place Order
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Place New Order</DialogTitle>
+                  </DialogHeader>
+
+                  <form onSubmit={handleOrderSubmit} className="space-y-4">
+
+                    {/* Items section */}
+                    <div className="border rounded-lg p-3 space-y-3">
+                      <h4 className="font-medium text-sm">Items *</h4>
+
+                      {/* Added items */}
+                      {orderItems.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between bg-muted rounded p-2 text-sm"
+                        >
+                          <span>
+                            {item.itemName}{" "}
+                            <span className="text-muted-foreground">Grade {item.grade}</span>
+                            {" — "}
+                            <span className="font-medium">{formatKG(item.quantity)}</span>
+                          </span>
+                          <Button
+                            type="button" variant="ghost" size="sm"
+                            onClick={() => removeOrderItem(idx)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
 
-          {/* Deal History — shows sales and ledger from the main system */}
-          <TabsContent value="history">
-            {!matchedCustomer ? (
-              <Card><CardContent className="p-8 text-center text-muted-foreground">
-                Your account is not yet linked to our system. Once the admin registers you, your deal history will appear here.
-              </CardContent></Card>
+                      {/* Add item row */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <Select value={currentItem} onValueChange={setCurrentItem}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select item" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ITEM_OPTIONS.map((i) => (
+                              <SelectItem key={i} value={i}>{i}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Select
+                          value={currentGrade}
+                          onValueChange={(v) => setCurrentGrade(v as Grade)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Grade" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {GRADE_OPTIONS.map((g) => (
+                              <SelectItem key={g} value={g}>Grade {g}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <div className="flex gap-1">
+                          <Input
+                            type="number"
+                            placeholder="kg"
+                            min={1}
+                            value={currentQty}
+                            onChange={(e) => setCurrentQty(e.target.value)}
+                          />
+                          <Button type="button" variant="outline" size="sm" onClick={addOrderItem}>
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Delivery date */}
+                    <div className="space-y-2">
+                      <Label>Preferred Delivery Date (optional)</Label>
+                      <Input
+                        type="date"
+                        value={deliveryDate}
+                        onChange={(e) => setDeliveryDate(e.target.value)}
+                        min={new Date().toISOString().split("T")[0]}
+                      />
+                    </div>
+
+                    {/* Notes */}
+                    <div className="space-y-2">
+                      <Label>Notes (optional)</Label>
+                      <Textarea
+                        value={orderNotes}
+                        onChange={(e) => setOrderNotes(e.target.value)}
+                        placeholder="Any special instructions..."
+                        rows={2}
+                      />
+                    </div>
+
+                    <p className="text-xs text-muted-foreground bg-muted/50 rounded p-2">
+                      Prices will be confirmed by the factory after order review.
+                      You will be notified via WhatsApp.
+                    </p>
+
+                    <Button type="submit" className="w-full" disabled={submitting}>
+                      {submitting ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Placing order...</>
+                      ) : (
+                        "Place Order"
+                      )}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {ordersLoading ? (
+              <div className="flex items-center justify-center h-32 text-muted-foreground gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Loading orders...</span>
+              </div>
+            ) : orders.length === 0 ? (
+              <div className="text-center py-12 border rounded-lg text-muted-foreground">
+                <Package className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                <p className="font-medium">No orders yet</p>
+                <p className="text-sm">Place your first order using the button above.</p>
+              </div>
             ) : (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <Card>
-                    <CardContent className="p-4">
-                      <p className="text-xs text-muted-foreground">Total Deals</p>
-                      <p className="text-2xl font-bold">{customerSales.length}</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <p className="text-xs text-muted-foreground">Total Amount</p>
-                      <p className="text-2xl font-bold">{formatPKR(customerSales.reduce((s, x) => s + x.totalAmount, 0))}</p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <p className="text-xs text-muted-foreground">Outstanding</p>
-                      <p className="text-2xl font-bold text-destructive">{formatPKR(outstanding)}</p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <Card>
-                  <CardHeader><CardTitle className="text-base">Ledger</CardTitle></CardHeader>
-                  <CardContent className="p-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead className="text-right">Debit</TableHead>
-                          <TableHead className="text-right">Credit</TableHead>
-                          <TableHead className="text-right">Balance</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {customerLedger.map((e) => (
-                          <TableRow key={e.id}>
-                            <TableCell>{formatDate(e.date)}</TableCell>
-                            <TableCell>{e.type}</TableCell>
-                            <TableCell>{e.description}</TableCell>
-                            <TableCell className="text-right">{e.debit > 0 ? formatPKR(e.debit) : "-"}</TableCell>
-                            <TableCell className="text-right">{e.credit > 0 ? formatPKR(e.credit) : "-"}</TableCell>
-                            <TableCell className="text-right font-medium">{formatPKR(e.balance)}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Order Ref</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Items</TableHead>
+                      <TableHead>Delivery</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {orders.map((o) => (
+                      <TableRow key={o.id}>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {o.orderRef || o.id.slice(0, 8)}
+                        </TableCell>
+                        <TableCell className="text-sm">{formatDate(o.date)}</TableCell>
+                        <TableCell className="text-sm max-w-[180px]">
+                          <div className="truncate">
+                            {o.items
+                              .map((i) => `${i.itemName} (${i.quantity} kg)`)
+                              .join(", ")}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {o.requestedDeliveryDate
+                            ? formatDate(o.requestedDeliveryDate)
+                            : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={statusVariant(o.status)}>
+                            {o.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </TabsContent>
 
-          {/* Profile */}
-          <TabsContent value="profile">
-            <Card>
-              <CardHeader>
-                <CardTitle>My Profile</CardTitle>
-                <CardDescription>Your account information</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {matchedCustomer ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div><Label className="text-muted-foreground text-xs">Name</Label><p className="font-medium">{matchedCustomer.name}</p></div>
-                    <div><Label className="text-muted-foreground text-xs">Contact Person</Label><p className="font-medium">{matchedCustomer.contactPerson}</p></div>
-                    <div><Label className="text-muted-foreground text-xs">Phone</Label><p className="font-medium">{matchedCustomer.phone}</p></div>
-                    <div><Label className="text-muted-foreground text-xs">City</Label><p className="font-medium">{matchedCustomer.city}</p></div>
-                    <div className="sm:col-span-2"><Label className="text-muted-foreground text-xs">Address</Label><p className="font-medium">{matchedCustomer.address}</p></div>
-                    <div><Label className="text-muted-foreground text-xs">Outstanding Balance</Label><p className="font-medium text-destructive">{formatPKR(outstanding)}</p></div>
-                    <div><Label className="text-muted-foreground text-xs">Status</Label><Badge variant={matchedCustomer.isActive ? "default" : "secondary"}>{matchedCustomer.isActive ? "Active" : "Inactive"}</Badge></div>
-                  </div>
-                ) : (
-                  <div className="text-center text-muted-foreground py-6">
-                    <User className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                    <p>Email: {email}</p>
-                    <p className="text-sm mt-2">Your profile will be available once the admin registers you as a customer.</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          {/* ── Ledger Tab ── */}
+          <TabsContent value="ledger" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">Account Statement</h2>
+              <div className={`text-sm font-semibold px-3 py-1 rounded-full ${
+                outstanding > 0
+                  ? "bg-red-100 text-red-700"
+                  : "bg-green-100 text-green-700"
+              }`}>
+                Balance: {formatPKR(outstanding)}
+              </div>
+            </div>
+
+            {myLedger.length === 0 ? (
+              <div className="text-center py-12 border rounded-lg text-muted-foreground">
+                <p>No transactions yet.</p>
+              </div>
+            ) : (
+              <div className="rounded-lg border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Debit</TableHead>
+                      <TableHead className="text-right">Credit</TableHead>
+                      <TableHead className="text-right">Balance</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {myLedger.map((entry) => (
+                      <TableRow key={entry.id}>
+                        <TableCell className="text-sm">
+                          {formatDate(entry.date)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {entry.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {entry.description}
+                        </TableCell>
+                        <TableCell className="text-right text-sm text-red-500">
+                          {entry.debit > 0 ? formatPKR(entry.debit) : "—"}
+                        </TableCell>
+                        <TableCell className="text-right text-sm text-green-600">
+                          {entry.credit > 0 ? formatPKR(entry.credit) : "—"}
+                        </TableCell>
+                        <TableCell
+                          className={`text-right text-sm font-medium ${
+                            entry.balance > 0 ? "text-red-500" : "text-green-600"
+                          }`}
+                        >
+                          {formatPKR(entry.balance)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
-      </main>
+      </div>
     </div>
   );
-}
+};
+
+export default CustomerPortal;

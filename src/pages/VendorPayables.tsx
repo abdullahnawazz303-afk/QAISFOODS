@@ -1,83 +1,104 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useVendorStore } from "@/stores/vendorStore";
-import { useVendorPayableStore } from "@/stores/vendorPayableStore";
-import { KpiCard } from "@/components/KpiCard";
+import { useCashFlowStore } from "@/stores/cashFlowStore";
 import { EmptyState } from "@/components/EmptyState";
+import { KpiCard } from "@/components/KpiCard";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreditCard, AlertTriangle, Clock, CheckCircle, Landmark, Calendar } from "lucide-react";
+import { toast } from "sonner";
 import { formatPKR, formatDate, getTodayISO } from "@/lib/formatters";
-import VendorPaymentDialog from "@/components/VendorPaymentDialog";
-import type { VendorPayable, PayableStatus } from "@/types";
+import type { VendorPayable } from "@/types";
 
 const VendorPayables = () => {
-  const { vendors, getTotalPayables } = useVendorStore();
-  const { payables, getOverduePayables, getUpcomingPayables, payments } = useVendorPayableStore();
+  const {
+    vendors, purchases,
+    fetchVendors, fetchPurchases,
+    getPayables, getOverduePayables, getUpcomingPayables,
+    getTotalPayables, recordPayment,
+  } = useVendorStore();
+  const { addEntry: addCashEntry } = useCashFlowStore();
 
   const [search, setSearch] = useState("");
   const [filterVendor, setFilterVendor] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
-  const [page, setPage] = useState(0);
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [selectedVendorId, setSelectedVendorId] = useState<string | undefined>();
-  const [selectedPayableId, setSelectedPayableId] = useState<string | undefined>();
-  const pageSize = 10;
+  const [payOpen, setPayOpen] = useState(false);
+  const [selectedPayable, setSelectedPayable] = useState<VendorPayable | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    fetchVendors();
+    fetchPurchases();
+  }, []);
+
+  const payables = getPayables();
   const overduePayables = getOverduePayables();
   const upcomingPayables = getUpcomingPayables(7);
-  const totalPending = payables.reduce((sum, p) => sum + p.remainingAmount, 0);
-  const totalOverdue = overduePayables.reduce((sum, p) => sum + p.remainingAmount, 0);
-  const paidPayables = payables.filter(p => p.status === 'Paid');
-  const totalPaidAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+  const paidPurchases = purchases.filter(p => p.paymentStatus === 'Paid');
 
-  const getVendorName = (id: string) => vendors.find(v => v.id === id)?.name || 'Unknown';
+  const totalPending = payables.reduce((s, p) => s + p.remainingAmount, 0);
+  const totalOverdue = overduePayables.reduce((s, p) => s + p.remainingAmount, 0);
+  const totalPaid = paidPurchases.reduce((s, p) => s + p.totalAmount, 0);
 
-  const getStatusVariant = (status: PayableStatus): "default" | "secondary" | "destructive" | "outline" => {
-    switch (status) {
-      case 'Paid': return 'default';
-      case 'Overdue': return 'destructive';
-      case 'Partially Paid': return 'secondary';
-      default: return 'outline';
-    }
+  const getVendorName = (id: string) => vendors.find(v => v.id === id)?.name ?? 'Unknown';
+
+  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+    if (status === 'Paid') return 'default';
+    if (status === 'Overdue') return 'destructive';
+    if (status === 'Partially Paid') return 'secondary';
+    return 'outline';
   };
 
-  const filtered = useMemo(() => {
-    return payables.filter(p => {
-      if (filterVendor && p.vendorId !== filterVendor) return false;
-      if (filterStatus && p.status !== filterStatus) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        return p.description.toLowerCase().includes(q) || getVendorName(p.vendorId).toLowerCase().includes(q);
-      }
-      return true;
+  const filtered = (list: VendorPayable[]) => list.filter(p => {
+    if (filterVendor && p.vendorId !== filterVendor) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      return p.description.toLowerCase().includes(q) || getVendorName(p.vendorId).toLowerCase().includes(q);
+    }
+    return true;
+  });
+
+  const handlePayClick = (p: VendorPayable) => {
+    setSelectedPayable(p);
+    setPayOpen(true);
+  };
+
+  const handlePaySubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedPayable) return;
+    const fd = new FormData(e.currentTarget);
+    const amount = Number(fd.get("amount"));
+    const method = fd.get("method") as string;
+    const notes = fd.get("notes") as string || "";
+
+    if (amount <= 0 || amount > selectedPayable.remainingAmount) {
+      toast.error("Invalid amount");
+      return;
+    }
+
+    setSubmitting(true);
+    await recordPayment(selectedPayable.id, selectedPayable.vendorId, amount, method, notes);
+
+    // Record cash outflow
+    await addCashEntry(getTodayISO(), {
+      type: 'out',
+      category: 'Vendor Payment',
+      amount,
+      description: `Payment to ${getVendorName(selectedPayable.vendorId)} — ${notes || selectedPayable.description}`,
     });
-  }, [payables, filterVendor, filterStatus, search, vendors]);
 
-  const pendingFiltered = filtered.filter(p => p.remainingAmount > 0);
-  const paidFiltered = filtered.filter(p => p.status === 'Paid');
-
-  const paged = pendingFiltered.slice(page * pageSize, (page + 1) * pageSize);
-  const totalPages = Math.ceil(pendingFiltered.length / pageSize);
-
-  const handlePayPayable = (vendorId: string, payableId: string) => {
-    setSelectedVendorId(vendorId);
-    setSelectedPayableId(payableId);
-    setPaymentDialogOpen(true);
+    setSubmitting(false);
+    setPayOpen(false);
+    setSelectedPayable(null);
+    toast.success("Payment recorded");
   };
 
-  const handlePaymentDialogClose = (open: boolean) => {
-    setPaymentDialogOpen(open);
-    if (!open) {
-      setSelectedVendorId(undefined);
-      setSelectedPayableId(undefined);
-    }
-  };
-
-  const PayablesTable = ({ data, showActions = true }: { data: VendorPayable[], showActions?: boolean }) => (
+  const PayablesTable = ({ data, showPay = true }: { data: VendorPayable[]; showPay?: boolean }) => (
     <Table>
       <TableHeader>
         <TableRow>
@@ -89,34 +110,36 @@ const VendorPayables = () => {
           <TableHead className="text-right">Paid</TableHead>
           <TableHead className="text-right">Remaining</TableHead>
           <TableHead>Status</TableHead>
-          {showActions && <TableHead className="text-right">Actions</TableHead>}
+          {showPay && <TableHead />}
         </TableRow>
       </TableHeader>
       <TableBody>
-        {data.map(p => (
+        {data.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={showPay ? 9 : 8} className="text-center py-8 text-muted-foreground">
+              No records found
+            </TableCell>
+          </TableRow>
+        ) : data.map(p => (
           <TableRow key={p.id}>
             <TableCell className="font-medium">{getVendorName(p.vendorId)}</TableCell>
-            <TableCell className="max-w-[200px] truncate">{p.description}</TableCell>
+            <TableCell className="max-w-[200px] truncate text-sm">{p.description}</TableCell>
             <TableCell>{formatDate(p.purchaseDate)}</TableCell>
             <TableCell className={p.status === 'Overdue' ? 'text-destructive font-medium' : ''}>
               {formatDate(p.dueDate)}
             </TableCell>
             <TableCell className="text-right">{formatPKR(p.totalAmount)}</TableCell>
-            <TableCell className="text-right status-healthy">{formatPKR(p.paidAmount)}</TableCell>
-            <TableCell className={`text-right font-medium ${p.remainingAmount > 0 ? 'status-overdue' : 'status-healthy'}`}>
+            <TableCell className="text-right text-green-600">{formatPKR(p.paidAmount)}</TableCell>
+            <TableCell className={`text-right font-medium ${p.remainingAmount > 0 ? 'text-destructive' : 'text-green-600'}`}>
               {formatPKR(p.remainingAmount)}
             </TableCell>
             <TableCell>
               <Badge variant={getStatusVariant(p.status)}>{p.status}</Badge>
             </TableCell>
-            {showActions && (
-              <TableCell className="text-right">
+            {showPay && (
+              <TableCell>
                 {p.remainingAmount > 0 && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handlePayPayable(p.vendorId, p.id)}
-                  >
+                  <Button size="sm" variant="outline" onClick={() => handlePayClick(p)}>
                     <CreditCard className="h-3 w-3 mr-1" /> Pay
                   </Button>
                 )}
@@ -135,156 +158,136 @@ const VendorPayables = () => {
           <h1 className="text-2xl font-display font-bold">Vendor Payables</h1>
           <p className="text-sm text-muted-foreground">Track and manage vendor payments and dues</p>
         </div>
-        <Button onClick={() => setPaymentDialogOpen(true)}>
-          <CreditCard className="h-4 w-4 mr-2" /> Make Payment
-        </Button>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard 
-          title="Total Pending" 
-          value={formatPKR(totalPending)} 
-          subtitle={`${pendingFiltered.length} invoices`} 
-          icon={Landmark} 
-        />
-        <KpiCard 
-          title="Overdue Amount" 
-          value={formatPKR(totalOverdue)} 
-          subtitle={`${overduePayables.length} overdue`} 
-          icon={AlertTriangle}
-          variant={overduePayables.length > 0 ? "danger" : undefined}
-        />
-        <KpiCard 
-          title="Due in 7 Days" 
-          value={formatPKR(upcomingPayables.reduce((s, p) => s + p.remainingAmount, 0))} 
-          subtitle={`${upcomingPayables.length} upcoming`} 
-          icon={Clock}
-          variant={upcomingPayables.length > 0 ? "warning" : undefined}
-        />
-        <KpiCard 
-          title="Total Paid" 
-          value={formatPKR(totalPaidAmount)} 
-          subtitle={`${paidPayables.length} cleared`} 
-          icon={CheckCircle}
-        />
+        <KpiCard title="Total Pending" value={formatPKR(totalPending)}
+          subtitle={`${payables.length} invoices`} icon={Landmark} />
+        <KpiCard title="Overdue Amount" value={formatPKR(totalOverdue)}
+          subtitle={`${overduePayables.length} overdue`} icon={AlertTriangle}
+          variant={overduePayables.length > 0 ? "danger" : undefined} />
+        <KpiCard title="Due in 7 Days"
+          value={formatPKR(upcomingPayables.reduce((s, p) => s + p.remainingAmount, 0))}
+          subtitle={`${upcomingPayables.length} upcoming`} icon={Clock}
+          variant={upcomingPayables.length > 0 ? "warning" : undefined} />
+        <KpiCard title="Total Paid" value={formatPKR(totalPaid)}
+          subtitle={`${paidPurchases.length} cleared`} icon={CheckCircle} />
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2">
-        <Input 
-          placeholder="Search payables..." 
-          value={search} 
-          onChange={(e) => { setSearch(e.target.value); setPage(0); }} 
-          className="max-w-xs" 
-        />
-        <Select value={filterVendor} onValueChange={(v) => { setFilterVendor(v === "all" ? "" : v); setPage(0); }}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="All Vendors" /></SelectTrigger>
+      <div className="flex gap-2 flex-wrap">
+        <Input placeholder="Search..." value={search}
+          onChange={e => setSearch(e.target.value)} className="max-w-xs" />
+        <Select value={filterVendor} onValueChange={v => setFilterVendor(v === 'all' ? '' : v)}>
+          <SelectTrigger className="w-[200px]"><SelectValue placeholder="All Vendors" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Vendors</SelectItem>
             {vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v === "all" ? "" : v); setPage(0); }}>
-          <SelectTrigger className="w-[160px]"><SelectValue placeholder="All Statuses" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="Pending">Pending</SelectItem>
-            <SelectItem value="Partially Paid">Partially Paid</SelectItem>
-            <SelectItem value="Overdue">Overdue</SelectItem>
-            <SelectItem value="Paid">Paid</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
-      {payables.length === 0 ? (
-        <EmptyState 
-          title="No payables yet" 
-          description="Payables will appear here when you add inventory from vendors. Go to Inventory to add your first purchase." 
+      {purchases.length === 0 ? (
+        <EmptyState
+          title="No payables yet"
+          description="Payables are created automatically when you add inventory stock. Go to Inventory → Add Stock and fill in the payment details."
         />
       ) : (
-        <Tabs defaultValue="pending" className="space-y-4">
+        <Tabs defaultValue="pending">
           <TabsList>
-            <TabsTrigger value="pending" className="gap-2">
-              <Clock className="h-4 w-4" />
-              Pending ({pendingFiltered.length})
-            </TabsTrigger>
-            <TabsTrigger value="overdue" className="gap-2">
-              <AlertTriangle className="h-4 w-4" />
-              Overdue ({overduePayables.length})
-            </TabsTrigger>
-            <TabsTrigger value="upcoming" className="gap-2">
-              <Calendar className="h-4 w-4" />
-              Due Soon ({upcomingPayables.length})
-            </TabsTrigger>
-            <TabsTrigger value="paid" className="gap-2">
-              <CheckCircle className="h-4 w-4" />
-              Paid ({paidFiltered.length})
-            </TabsTrigger>
+            <TabsTrigger value="pending"><Clock className="h-4 w-4 mr-1" />Pending ({filtered(payables).length})</TabsTrigger>
+            <TabsTrigger value="overdue"><AlertTriangle className="h-4 w-4 mr-1" />Overdue ({filtered(overduePayables).length})</TabsTrigger>
+            <TabsTrigger value="upcoming"><Calendar className="h-4 w-4 mr-1" />Due Soon ({filtered(upcomingPayables).length})</TabsTrigger>
+            <TabsTrigger value="paid"><CheckCircle className="h-4 w-4 mr-1" />Paid ({paidPurchases.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pending">
-            {pendingFiltered.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">No pending payables found.</div>
-            ) : (
-              <>
-                <div className="rounded-lg border">
-                  <PayablesTable data={paged} />
-                </div>
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
-                      Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, pendingFiltered.length)} of {pendingFiltered.length}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Previous</Button>
-                      <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Next</Button>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+            <div className="rounded-lg border"><PayablesTable data={filtered(payables)} /></div>
           </TabsContent>
-
           <TabsContent value="overdue">
-            {overduePayables.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">No overdue payables. Great job staying on top of payments!</div>
-            ) : (
-              <div className="rounded-lg border">
-                <PayablesTable data={overduePayables} />
-              </div>
-            )}
+            <div className="rounded-lg border"><PayablesTable data={filtered(overduePayables)} /></div>
           </TabsContent>
-
           <TabsContent value="upcoming">
-            {upcomingPayables.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">No payments due in the next 7 days.</div>
-            ) : (
-              <div className="rounded-lg border">
-                <PayablesTable data={upcomingPayables} />
-              </div>
-            )}
+            <div className="rounded-lg border"><PayablesTable data={filtered(upcomingPayables)} /></div>
           </TabsContent>
-
           <TabsContent value="paid">
-            {paidFiltered.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">No paid payables found.</div>
-            ) : (
-              <div className="rounded-lg border">
-                <PayablesTable data={paidFiltered} showActions={false} />
-              </div>
-            )}
+            <div className="rounded-lg border">
+              <PayablesTable
+                data={paidPurchases.map(p => ({
+                  id: p.id,
+                  vendorId: p.vendorId,
+                  purchaseRef: p.purchaseRef,
+                  purchaseDate: p.purchaseDate,
+                  dueDate: p.dueDate ?? p.purchaseDate,
+                  paymentTermsDays: p.paymentTermsDays,
+                  totalAmount: p.totalAmount,
+                  paidAmount: p.amountPaid,
+                  remainingAmount: 0,
+                  status: 'Paid' as const,
+                  description: p.items.map((i: any) => i.itemName).join(', '),
+                }))}
+                showPay={false}
+              />
+            </div>
           </TabsContent>
         </Tabs>
       )}
 
-      {/* Vendor Payment Dialog */}
-      <VendorPaymentDialog
-        open={paymentDialogOpen}
-        onOpenChange={handlePaymentDialogClose}
-        preSelectedVendorId={selectedVendorId}
-        preSelectedPayableId={selectedPayableId}
-      />
+      {/* Payment Dialog */}
+      <Dialog open={payOpen} onOpenChange={v => { setPayOpen(v); if (!v) setSelectedPayable(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
+          {selectedPayable && (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-muted p-3 text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Vendor</span>
+                  <span className="font-medium">{getVendorName(selectedPayable.vendorId)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Description</span>
+                  <span className="text-right max-w-[200px] truncate">{selectedPayable.description}</span>
+                </div>
+                <div className="flex justify-between font-semibold border-t pt-1 mt-1">
+                  <span>Remaining</span>
+                  <span className="text-destructive">{formatPKR(selectedPayable.remainingAmount)}</span>
+                </div>
+              </div>
+              <form onSubmit={handlePaySubmit} className="space-y-3">
+                <div className="space-y-2">
+                  <Label>Amount (PKR)</Label>
+                  <Input name="amount" type="number" min="1"
+                    max={selectedPayable.remainingAmount} required autoFocus
+                    placeholder={`Max: ${formatPKR(selectedPayable.remainingAmount)}`} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Method</Label>
+                  <Select name="method" defaultValue="Cash">
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cash">Cash</SelectItem>
+                      <SelectItem value="Bank">Bank Transfer</SelectItem>
+                      <SelectItem value="Cheque">Cheque</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Notes</Label>
+                  <Input name="notes" placeholder="Optional" />
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setPayOpen(false)}>Cancel</Button>
+                  <Button type="submit" className="flex-1" disabled={submitting}>
+                    {submitting ? "Saving..." : "Record Payment"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

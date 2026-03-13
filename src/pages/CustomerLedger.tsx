@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCustomerStore } from "@/stores/customerStore";
 import { EmptyState } from "@/components/EmptyState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,38 +12,61 @@ import { toast } from "sonner";
 import { formatPKR, formatDate, getTodayISO } from "@/lib/formatters";
 
 const CustomerLedger = () => {
-  const { customers, ledgerEntries, addLedgerEntry, getOutstanding } = useCustomerStore();
+  const {
+    customers,
+    ledgerEntries,
+    addLedgerEntry,
+    fetchCustomers,
+    fetchLedger,
+    getOutstanding,
+  } = useCustomerStore();
+
   const [selectedCustomer, setSelectedCustomer] = useState("");
   const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Fetch customers on mount
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  // Fetch ledger when customer is selected
+  useEffect(() => {
+    if (selectedCustomer) {
+      fetchLedger(selectedCustomer);
+    }
+  }, [selectedCustomer]);
 
   const customer = customers.find(c => c.id === selectedCustomer);
   const entries = ledgerEntries[selectedCustomer] || [];
-
   const totalDebit = entries.reduce((s, e) => s + e.debit, 0);
   const totalCredit = entries.reduce((s, e) => s + e.credit, 0);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const type = fd.get("type") as string;
     const amount = Number(fd.get("amount"));
-    addLedgerEntry(selectedCustomer, {
+
+    setSubmitting(true);
+    await addLedgerEntry(selectedCustomer, {
       date: fd.get("date") as string || getTodayISO(),
       type,
       description: fd.get("description") as string,
       debit: type === "Sale" || type === "Adjustment" ? amount : 0,
       credit: type === "Payment Received" ? amount : 0,
     });
+    setSubmitting(false);
     setOpen(false);
     toast.success("Ledger entry added");
   };
 
-  const handlePrint = () => window.print();
-
   const exportCSV = () => {
     if (entries.length === 0) return;
     const headers = "Date,Type,Description,Debit,Credit,Balance\n";
-    const rows = entries.map(e => `${e.date},${e.type},${e.description},${e.debit},${e.credit},${e.balance}`).join("\n");
+    const rows = entries
+      .map(e => `${e.date},${e.type},${e.description},${e.debit},${e.credit},${e.balance}`)
+      .join("\n");
     const blob = new Blob([headers + rows], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -79,34 +102,61 @@ const CustomerLedger = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2"><Label>Amount (PKR)</Label><Input name="amount" type="number" required /></div>
-                  <div className="space-y-2"><Label>Date</Label><Input name="date" type="date" defaultValue={getTodayISO()} required /></div>
-                  <div className="space-y-2"><Label>Description</Label><Input name="description" required /></div>
-                  <Button type="submit" className="w-full">Add Entry</Button>
+                  <div className="space-y-2">
+                    <Label>Amount (PKR)</Label>
+                    <Input name="amount" type="number" min="1" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date</Label>
+                    <Input name="date" type="date" defaultValue={getTodayISO()} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Input name="description" required />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={submitting}>
+                    {submitting ? "Saving..." : "Add Entry"}
+                  </Button>
                 </form>
               </DialogContent>
             </Dialog>
           )}
-          <Button variant="outline" onClick={handlePrint}><Printer className="h-4 w-4 mr-2" /> Print</Button>
+          <Button variant="outline" onClick={() => window.print()}>
+            <Printer className="h-4 w-4 mr-2" /> Print
+          </Button>
           {entries.length > 0 && (
             <Button variant="outline" onClick={exportCSV}>Export CSV</Button>
           )}
         </div>
       </div>
 
+      {/* Customer Selector */}
       <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-        <SelectTrigger className="w-[300px]"><SelectValue placeholder="Select customer" /></SelectTrigger>
+        <SelectTrigger className="w-[300px]">
+          <SelectValue placeholder="Select customer" />
+        </SelectTrigger>
         <SelectContent>
-          {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          {customers.map(c => (
+            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+          ))}
         </SelectContent>
       </Select>
 
       {!selectedCustomer ? (
-        <EmptyState title="Select a customer" description="Choose a customer from the dropdown to view their ledger." />
+        <EmptyState
+          title="Select a customer"
+          description="Choose a customer from the dropdown to view their ledger."
+        />
       ) : entries.length === 0 ? (
-        <EmptyState title="No transactions yet" description={`No ledger entries for ${customer?.name}. Add your first entry to get started.`} actionLabel="Add Entry" onAction={() => setOpen(true)} />
+        <EmptyState
+          title="No transactions yet"
+          description={`No ledger entries for ${customer?.name}. Add your first entry to get started.`}
+          actionLabel="Add Entry"
+          onAction={() => setOpen(true)}
+        />
       ) : (
         <>
+          {/* Summary Cards */}
           {customer && (
             <div className="grid grid-cols-3 gap-4">
               <div className="rounded-lg border bg-card p-4">
@@ -120,10 +170,14 @@ const CustomerLedger = () => {
               </div>
               <div className="rounded-lg border bg-card p-4">
                 <p className="text-sm text-muted-foreground">Outstanding</p>
-                <p className={`font-semibold ${getOutstanding(selectedCustomer) > 0 ? 'status-overdue' : 'status-healthy'}`}>{formatPKR(getOutstanding(selectedCustomer))}</p>
+                <p className={`font-semibold ${getOutstanding(selectedCustomer) > 0 ? 'status-overdue' : 'status-healthy'}`}>
+                  {formatPKR(getOutstanding(selectedCustomer))}
+                </p>
               </div>
             </div>
           )}
+
+          {/* Ledger Table */}
           <div className="rounded-lg border">
             <Table>
               <TableHeader>
@@ -142,18 +196,28 @@ const CustomerLedger = () => {
                     <TableCell>{formatDate(e.date)}</TableCell>
                     <TableCell>{e.type}</TableCell>
                     <TableCell>{e.description}</TableCell>
-                    <TableCell className="text-right">{e.debit > 0 ? formatPKR(e.debit) : '-'}</TableCell>
-                    <TableCell className="text-right">{e.credit > 0 ? formatPKR(e.credit) : '-'}</TableCell>
-                    <TableCell className="text-right font-medium">{formatPKR(e.balance)}</TableCell>
+                    <TableCell className="text-right">
+                      {e.debit > 0 ? formatPKR(e.debit) : '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {e.credit > 0 ? formatPKR(e.credit) : '-'}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatPKR(e.balance)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
+
+          {/* Summary Footer */}
           <div className="flex justify-end gap-8 text-sm border-t pt-4">
-            <span>Total Debits: <strong>{formatPKR(totalDebit)}</strong></span>
-            <span>Total Credits: <strong>{formatPKR(totalCredit)}</strong></span>
-            <span>Final Balance: <strong className={getOutstanding(selectedCustomer) > 0 ? 'status-overdue' : 'status-healthy'}>{formatPKR(getOutstanding(selectedCustomer))}</strong></span>
+            <span>Total Sales: <strong>{formatPKR(totalDebit)}</strong></span>
+            <span>Total Paid: <strong>{formatPKR(totalCredit)}</strong></span>
+            <span>Outstanding: <strong className={getOutstanding(selectedCustomer) > 0 ? 'status-overdue' : 'status-healthy'}>
+              {formatPKR(getOutstanding(selectedCustomer))}
+            </strong></span>
           </div>
         </>
       )}

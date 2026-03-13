@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCustomerStore } from "@/stores/customerStore";
 import { useSalesStore } from "@/stores/salesStore";
 import { EmptyState } from "@/components/EmptyState";
@@ -15,24 +15,28 @@ import { formatPKR, formatDate } from "@/lib/formatters";
 import RecordPaymentDialog from "@/components/RecordPaymentDialog";
 
 const Customers = () => {
-  const { customers, addCustomer, getOutstanding } = useCustomerStore();
+  const { customers, addCustomer, fetchCustomers, getOutstanding, loading } = useCustomerStore();
   const { sales } = useSalesStore();
+
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const pageSize = 10;
 
-  // Payment dialog state
   const [payOpen, setPayOpen] = useState(false);
   const [payCustomerId, setPayCustomerId] = useState<string | undefined>(undefined);
-
-  // Customer detail dialog
   const [detailCustomerId, setDetailCustomerId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    addCustomer({
+    setSubmitting(true);
+    const id = await addCustomer({
       name: fd.get("name") as string,
       contactPerson: fd.get("contactPerson") as string || "",
       phone: fd.get("phone") as string,
@@ -43,8 +47,13 @@ const Customers = () => {
       notes: fd.get("notes") as string || "",
       isActive: true,
     });
-    setOpen(false);
-    toast.success("Customer added");
+    setSubmitting(false);
+    if (id) {
+      setOpen(false);
+      toast.success("Customer added");
+    } else {
+      toast.error("Failed to add customer");
+    }
   };
 
   const openPayment = (customerId: string) => {
@@ -54,13 +63,15 @@ const Customers = () => {
 
   const filtered = customers.filter(c => {
     if (!search) return true;
-    return c.name.toLowerCase().includes(search.toLowerCase()) || c.phone.includes(search);
+    return (
+      c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.phone.includes(search)
+    );
   });
 
   const paged = filtered.slice(page * pageSize, (page + 1) * pageSize);
   const totalPages = Math.ceil(filtered.length / pageSize);
 
-  // Detail customer
   const detailCustomer = customers.find(c => c.id === detailCustomerId);
   const detailSales = detailCustomerId
     ? sales.filter(s => s.customerId === detailCustomerId)
@@ -86,14 +97,29 @@ const Customers = () => {
               <DialogHeader><DialogTitle>Add Customer</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2"><Label>Name *</Label><Input name="name" required maxLength={100} /></div>
-                  <div className="space-y-2"><Label>Contact Person</Label><Input name="contactPerson" maxLength={100} /></div>
+                  <div className="space-y-2">
+                    <Label>Name *</Label>
+                    <Input name="name" required maxLength={100} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Contact Person</Label>
+                    <Input name="contactPerson" maxLength={100} />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2"><Label>Phone *</Label><Input name="phone" required maxLength={20} /></div>
-                  <div className="space-y-2"><Label>City</Label><Input name="city" maxLength={50} /></div>
+                  <div className="space-y-2">
+                    <Label>Phone *</Label>
+                    <Input name="phone" required maxLength={20} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>City</Label>
+                    <Input name="city" maxLength={50} />
+                  </div>
                 </div>
-                <div className="space-y-2"><Label>Address</Label><Input name="address" maxLength={200} /></div>
+                <div className="space-y-2">
+                  <Label>Address</Label>
+                  <Input name="address" maxLength={200} />
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Opening Balance (PKR)</Label>
@@ -105,18 +131,35 @@ const Customers = () => {
                     <Input name="creditLimit" type="number" min="0" defaultValue="0" />
                   </div>
                 </div>
-                <div className="space-y-2"><Label>Notes</Label><Textarea name="notes" maxLength={500} /></div>
-                <Button type="submit" className="w-full">Add Customer</Button>
+                <div className="space-y-2">
+                  <Label>Notes</Label>
+                  <Textarea name="notes" maxLength={500} />
+                </div>
+                <Button type="submit" className="w-full" disabled={submitting}>
+                  {submitting ? "Saving..." : "Add Customer"}
+                </Button>
               </form>
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
-      <Input placeholder="Search customers..." value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} className="max-w-xs" />
+      <Input
+        placeholder="Search customers..."
+        value={search}
+        onChange={e => { setSearch(e.target.value); setPage(0); }}
+        className="max-w-xs"
+      />
 
-      {customers.length === 0 ? (
-        <EmptyState title="No customers yet" description="No records found. Add your first customer to get started." actionLabel="Add First Customer" onAction={() => setOpen(true)} />
+      {loading ? (
+        <div className="text-center py-12 text-muted-foreground">Loading customers...</div>
+      ) : customers.length === 0 ? (
+        <EmptyState
+          title="No customers yet"
+          description="No records found. Add your first customer to get started."
+          actionLabel="Add First Customer"
+          onAction={() => setOpen(true)}
+        />
       ) : (
         <>
           <div className="rounded-lg border">
@@ -143,15 +186,27 @@ const Customers = () => {
                         {formatPKR(outstanding)}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={c.isActive ? 'default' : 'secondary'}>{c.isActive ? 'Active' : 'Inactive'}</Badge>
+                        <Badge variant={c.isActive ? 'default' : 'secondary'}>
+                          {c.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => setDetailCustomerId(c.id)} title="View Profile">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setDetailCustomerId(c.id)}
+                            title="View Profile"
+                          >
                             <Eye className="h-3.5 w-3.5" />
                           </Button>
                           {outstanding > 0 && (
-                            <Button size="sm" variant="outline" onClick={() => openPayment(c.id)} title="Record Payment">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openPayment(c.id)}
+                              title="Record Payment"
+                            >
                               <CreditCard className="h-3.5 w-3.5 mr-1" /> Pay
                             </Button>
                           )}
@@ -167,8 +222,12 @@ const Customers = () => {
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">Page {page + 1} of {totalPages}</p>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Previous</Button>
-                <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Next</Button>
+                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+                  Previous
+                </Button>
+                <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
+                  Next
+                </Button>
               </div>
             </div>
           )}
@@ -182,7 +241,7 @@ const Customers = () => {
         preSelectedCustomerId={payCustomerId}
       />
 
-      {/* Customer Detail/Profile Dialog */}
+      {/* Customer Detail Dialog */}
       <Dialog open={!!detailCustomerId} onOpenChange={(v) => { if (!v) setDetailCustomerId(null); }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -190,7 +249,6 @@ const Customers = () => {
           </DialogHeader>
           {detailCustomer && (
             <div className="space-y-5">
-              {/* Info cards */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-lg border bg-card p-3">
                   <p className="text-xs text-muted-foreground">Phone</p>
@@ -208,7 +266,6 @@ const Customers = () => {
                 </div>
               </div>
 
-              {/* Pending Orders */}
               {pendingSales.length > 0 && (
                 <div>
                   <h4 className="font-semibold text-sm mb-2">Pending Orders ({pendingSales.length})</h4>
@@ -253,7 +310,6 @@ const Customers = () => {
                 </div>
               )}
 
-              {/* All Orders */}
               <div>
                 <h4 className="font-semibold text-sm mb-2">All Orders ({detailSales.length})</h4>
                 {detailSales.length === 0 ? (
@@ -276,7 +332,10 @@ const Customers = () => {
                             <TableCell>{formatDate(s.date)}</TableCell>
                             <TableCell className="text-right">{formatPKR(s.totalAmount)}</TableCell>
                             <TableCell>
-                              <Badge variant={s.paymentStatus === 'Paid' ? 'default' : s.paymentStatus === 'Unpaid' ? 'destructive' : 'secondary'}>
+                              <Badge variant={
+                                s.paymentStatus === 'Paid' ? 'default' :
+                                s.paymentStatus === 'Unpaid' ? 'destructive' : 'secondary'
+                              }>
                                 {s.paymentStatus}
                               </Badge>
                             </TableCell>
@@ -288,7 +347,6 @@ const Customers = () => {
                 )}
               </div>
 
-              {/* Quick pay button */}
               {getOutstanding(detailCustomer.id) > 0 && (
                 <Button
                   className="w-full"
