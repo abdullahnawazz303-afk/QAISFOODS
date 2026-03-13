@@ -11,35 +11,83 @@ import { Leaf, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
 
+// ── Validation helpers ─────────────────────────────────────────
+
+function validateEmail(email: string): string | null {
+  if (!email) return "Email is required";
+
+  const lower = email.toLowerCase().trim();
+
+  // Must be a valid email format
+  if (!lower.includes("@")) return "Enter a valid email address";
+
+  const [, domain] = lower.split("@");
+
+  // Staff rule: domain must be qaisfoods.com
+  // Customer rule: local part must contain "customer"
+  const localPart = lower.split("@")[0];
+
+  const isStaffEmail   = domain === "qaisfoods.com";
+  const isCustomerEmail = localPart.includes("customer");
+
+  if (!isStaffEmail && !isCustomerEmail) {
+    return "Staff must use a @qaisfoods.com email. Customers must have 'customer' in their email.";
+  }
+
+  return null; // valid
+}
+
+function validatePassword(password: string): string | null {
+  if (!password)          return "Password is required";
+  if (password.length < 6) return "Password must be at least 6 characters";
+  return null;
+}
+
+// ─── Component ────────────────────────────────────────────────
+
 export default function Login() {
-  const [email, setEmail]             = useState("");
-  const [password, setPassword]       = useState("");
+  const [email, setEmail]               = useState("");
+  const [password, setPassword]         = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading]         = useState(false);
+  const [loading, setLoading]           = useState(false);
+  const [emailError, setEmailError]     = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const login    = useAuthStore((s) => s.login);
-  const userRole = useAuthStore((s) => s.userRole);
   const navigate = useNavigate();
 
+  // ── Inline field validation on blur
+  const handleEmailBlur = () => {
+    setEmailError(validateEmail(email));
+  };
+
+  const handlePasswordBlur = () => {
+    setPasswordError(validatePassword(password));
+  };
+
+  // ── Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !password) {
-      toast.error("Please enter your email and password");
-      return;
-    }
+    // Validate both fields before hitting Supabase
+    const eErr = validateEmail(email);
+    const pErr = validatePassword(password);
+
+    setEmailError(eErr);
+    setPasswordError(pErr);
+
+    if (eErr || pErr) return; // stop here if invalid
 
     setLoading(true);
     const ok = await login(email.trim(), password);
     setLoading(false);
 
     if (!ok) {
-      toast.error("Invalid email or password. Please try again.");
+      toast.error("Incorrect email or password. Please try again.");
       return;
     }
 
-    // Role comes from authStore — set by Supabase after login
-    // Do NOT guess role from email like the old code did
+    // Role is set in the store by authStore.login() reading public.users
     const role = useAuthStore.getState().userRole;
 
     if (role === "customer") {
@@ -76,11 +124,18 @@ export default function Login() {
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (emailError) setEmailError(validateEmail(e.target.value));
+                  }}
+                  onBlur={handleEmailBlur}
+                  placeholder="admin@qaisfoods.com"
                   autoComplete="email"
-                  required
+                  className={emailError ? "border-destructive focus-visible:ring-destructive" : ""}
                 />
+                {emailError && (
+                  <p className="text-xs text-destructive">{emailError}</p>
+                )}
               </div>
 
               {/* Password */}
@@ -91,10 +146,14 @@ export default function Login() {
                     id="password"
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (passwordError) setPasswordError(validatePassword(e.target.value));
+                    }}
+                    onBlur={handlePasswordBlur}
                     placeholder="••••••••"
                     autoComplete="current-password"
-                    required
+                    className={passwordError ? "border-destructive focus-visible:ring-destructive" : ""}
                   />
                   <button
                     type="button"
@@ -108,6 +167,9 @@ export default function Login() {
                     }
                   </button>
                 </div>
+                {passwordError && (
+                  <p className="text-xs text-destructive">{passwordError}</p>
+                )}
               </div>
 
               {/* Submit */}
@@ -124,7 +186,7 @@ export default function Login() {
               </Button>
             </form>
 
-            {/* Register link for customers */}
+            {/* Register link */}
             <div className="mt-6 pt-5 border-t text-center space-y-1">
               <p className="text-sm text-muted-foreground">
                 New customer? Don't have an account yet?
@@ -146,14 +208,14 @@ export default function Login() {
             <span className="mt-0.5 h-2 w-2 rounded-full bg-primary shrink-0" />
             <p>
               <span className="font-medium text-foreground">Factory Staff</span> — 
-              Admin, Manager, Cashier accounts created by system administrator
+              Must use a <span className="font-mono text-foreground">@qaisfoods.com</span> email
             </p>
           </div>
           <div className="flex items-start gap-2">
             <span className="mt-0.5 h-2 w-2 rounded-full bg-green-500 shrink-0" />
             <p>
               <span className="font-medium text-foreground">Customers</span> — 
-              Wholesale buyers registered by the factory. Use your phone number to register.
+              Email must contain <span className="font-mono text-foreground">customer</span> (e.g. customer1@gmail.com)
             </p>
           </div>
         </div>
