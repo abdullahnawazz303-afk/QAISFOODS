@@ -1,93 +1,113 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
-
 @layer base {
   :root {
-    --background: 140 20% 98%;
-    --foreground: 150 30% 10%;
+    /* Clean neutral white for light mode */
+    --background: 0 0% 98%; /* #FAFAFA */ 
+    --foreground: 222 15% 15%; /* Dark charcoal text */
 
+    /* Subtle elevation for KPI cards in light mode */
     --card: 0 0% 100%;
-    --card-foreground: 150 30% 10%;
+    --card-foreground: 222 15% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 150 30% 10%;
+    --popover-foreground: 222 15% 15%;
 
-    --primary: 142 54% 36%;
+    /* Deep saturated emerald green */
+    --primary: 151 75% 25%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 140 20% 94%;
-    --secondary-foreground: 150 30% 15%;
+    /* Neutral grey */
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 222 15% 15%;
 
-    --muted: 140 15% 95%;
-    --muted-foreground: 150 10% 45%;
+    --muted: 210 15% 94%;
+    --muted-foreground: 215 15% 45%;
 
-    --accent: 140 30% 92%;
-    --accent-foreground: 142 54% 28%;
+    /* Clean muted hover accent for ghost buttons */
+    --accent: 210 20% 90%;
+    --accent-foreground: 222 15% 15%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 75% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --warning: 35 92% 50%;
+    --warning: 35 90% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --success: 142 54% 36%;
+    --success: 151 75% 25%;
     --success-foreground: 0 0% 100%;
 
-    --border: 140 15% 89%;
-    --input: 140 15% 89%;
-    --ring: 142 54% 36%;
+    /* Prominent borders for clear sectioning */
+    --border: 214 20% 65%;
+    --input: 214 20% 65%;
+    --ring: 151 75% 25%;
 
-    --radius: 0.5rem;
+    --radius: 0.35rem; /* Clean sharp corners */
 
-    --sidebar-background: 150 30% 10%;
-    --sidebar-foreground: 140 15% 85%;
-    --sidebar-primary: 142 54% 45%;
+    /* Distinct Sidebar */
+    --sidebar-background: 0 0% 95%; /* Slightly different from background FAFAFA */
+    --sidebar-foreground: 222 15% 15%;
+    --sidebar-primary: 151 75% 25%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 150 25% 16%;
-    --sidebar-accent-foreground: 140 15% 90%;
-    --sidebar-border: 150 20% 18%;
-    --sidebar-ring: 142 54% 45%;
+    --sidebar-accent: 210 20% 90%;
+    --sidebar-accent-foreground: 222 15% 15%;
+    --sidebar-border: 214 20% 85%;
+    --sidebar-ring: 151 75% 25%;
 
-    --chart-1: 142 54% 36%;
-    --chart-2: 142 40% 50%;
-    --chart-3: 35 92% 50%;
+    --chart-1: 151 75% 25%;
+    --chart-2: 210 50% 45%;
+    --chart-3: 35 90% 50%;
     --chart-4: 200 60% 50%;
-    --chart-5: 0 72% 51%;
+    --chart-5: 0 75% 50%;
   }
 
   .dark {
-    --background: 150 30% 6%;
-    --foreground: 140 15% 92%;
-    --card: 150 25% 9%;
-    --card-foreground: 140 15% 92%;
-    --popover: 150 25% 9%;
-    --popover-foreground: 140 15% 92%;
-    --primary: 142 54% 45%;
+    /* Deep true charcoal */
+    --background: 225 21% 7%; /* #0F1117 approx */
+    --foreground: 210 20% 96%; /* Crisp off-white text */
+    
+    /* Slight background elevation for cards */
+    --card: 225 15% 11%;
+    --card-foreground: 210 20% 96%;
+    
+    --popover: 225 15% 11%;
+    --popover-foreground: 210 20% 96%;
+    
+    /* Primary deep emerald remains vivid */
+    --primary: 151 70% 35%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 150 20% 14%;
-    --secondary-foreground: 140 15% 90%;
-    --muted: 150 15% 15%;
-    --muted-foreground: 140 10% 55%;
-    --accent: 150 20% 18%;
-    --accent-foreground: 142 54% 55%;
-    --destructive: 0 62% 40%;
+    
+    --secondary: 225 15% 15%;
+    --secondary-foreground: 210 20% 96%;
+    
+    --muted: 225 15% 15%;
+    --muted-foreground: 215 15% 65%;
+    
+    /* Deep charcoal hover accent */
+    --accent: 225 15% 18%;
+    --accent-foreground: 210 20% 96%;
+    
+    --destructive: 0 75% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 150 15% 18%;
-    --input: 150 15% 18%;
-    --ring: 142 54% 45%;
-    --sidebar-background: 150 30% 6%;
-    --sidebar-foreground: 140 15% 85%;
-    --sidebar-primary: 142 54% 50%;
+    
+    /* Prominent, bold borders for clear sectioning */
+    --border: 225 15% 38%;
+    --input: 225 15% 38%;
+    --ring: 151 70% 35%;
+    
+    /* Visibly distinct sidebar background */
+    --sidebar-background: 225 15% 12%; 
+    --sidebar-foreground: 210 20% 96%;
+    --sidebar-primary: 151 70% 35%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 150 25% 12%;
-    --sidebar-accent-foreground: 140 15% 90%;
-    --sidebar-border: 150 20% 14%;
-    --sidebar-ring: 142 54% 50%;
+    --sidebar-accent: 225 15% 18%;
+    --sidebar-accent-foreground: 210 20% 98%;
+    --sidebar-border: 225 15% 22%;
+    --sidebar-ring: 151 70% 35%;
   }
 }
 
@@ -112,6 +132,17 @@
   .status-healthy {
     color: hsl(var(--success));
     font-weight: 600;
+  }
+  
+  /* Additional glassmorphism and modern utilities */
+  .glass-card {
+    @apply bg-card border shadow-sm;
+  }
+  .glass-panel {
+    @apply bg-primary/95 backdrop-blur-lg border border-primary-foreground/10 shadow-xl;
+  }
+  .heading-serif {
+    @apply font-display tracking-tight text-foreground;
   }
 }
 

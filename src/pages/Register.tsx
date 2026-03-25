@@ -71,7 +71,7 @@ const Register = () => {
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">Account Created!</h2>
+              <h2 className="text-2xl font-bold">Account Created!</h2>
               <p className="text-sm text-muted-foreground mt-1">
                 Welcome, <span className="font-medium text-foreground">{customerName}</span>! Your account has been successfully created.
               </p>
@@ -90,7 +90,7 @@ const Register = () => {
           <div className="mx-auto w-12 h-12 rounded-xl bg-primary flex items-center justify-center mb-3">
             <Leaf className="h-6 w-6 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold">Create Customer Account</h1>
+          <h1 className="text-3xl font-bold">Create Customer Account</h1>
           <p className="text-sm text-muted-foreground mt-1">Register using your factory-approved phone number</p>
         </div>
         <Card className="shadow-sm">

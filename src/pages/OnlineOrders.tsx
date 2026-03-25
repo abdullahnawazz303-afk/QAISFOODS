@@ -250,7 +250,7 @@ const OnlineOrders = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold flex items-center gap-2">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
             Online Orders
             {pendingCount > 0 && (
               <Badge variant="destructive" className="text-xs">{pendingCount} pending</Badge>

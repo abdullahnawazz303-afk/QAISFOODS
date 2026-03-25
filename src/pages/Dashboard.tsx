@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { KpiCard } from "@/components/KpiCard";
-import { Wallet, Users, Landmark, FileText, Package, Calendar, AlertTriangle, ShoppingCart } from "lucide-react";
+import { Wallet, Users, Landmark, FileText, Package, Calendar, AlertTriangle, ShoppingCart, Building2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCashFlowStore } from "@/stores/cashFlowStore";
 import { useCustomerStore } from "@/stores/customerStore";
@@ -71,8 +71,36 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-display font-bold">Dashboard</h1>
+        <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-sm text-muted-foreground">Overview of factory operations & finances</p>
+      </div>
+
+      {/* ── Company Total Balance Banner ── */}
+      <div className="rounded-lg border bg-gradient-to-r from-primary/10 via-card to-card p-5 flex items-center gap-4">
+        <div className="h-12 w-12 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+          <Building2 className="h-6 w-6 text-primary" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">Company Total Balance</p>
+          <p className="text-2xl font-bold text-foreground tracking-tight">
+            {formatPKR(todayBalance + totalReceivables - totalPayables)}
+          </p>
+        </div>
+        <div className="flex-1" />
+        <div className="hidden sm:flex gap-6 text-xs text-muted-foreground">
+          <div className="text-center">
+            <p className="font-semibold text-foreground text-sm">{formatPKR(todayBalance)}</p>
+            <p>Cash</p>
+          </div>
+          <div className="text-center">
+            <p className="font-semibold text-green-600 dark:text-green-400 text-sm">+{formatPKR(totalReceivables)}</p>
+            <p>Receivables</p>
+          </div>
+          <div className="text-center">
+            <p className="font-semibold text-red-500 text-sm">-{formatPKR(totalPayables)}</p>
+            <p>Payables</p>
+          </div>
+        </div>
       </div>
 
       {/* ── Notifications ── */}

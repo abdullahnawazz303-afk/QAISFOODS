@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, Truck, Award, Leaf, ArrowRight, ChevronRight } from "lucide-react";
 import qfLogo from "@/assets/qf-logo.png";
 import { motion } from "framer-motion";
-import heroImg from "@/assets/hero-lentils.jpg";
+import heroImg from "@/assets/hero_lentils_new.png";
 import masoor from "@/assets/product-masoor.jpg";
 import chana from "@/assets/product-chana.jpg";
 import moong from "@/assets/product-moong.jpg";
@@ -76,10 +76,10 @@ export default function Home() {
             <motion.div variants={fadeUp} custom={0.5} className="mb-3">
               <img src={qfLogo} alt="QF Logo" className="w-24 h-24 md:w-32 md:h-32 object-contain" />
             </motion.div>
-            <motion.h1 variants={fadeUp} custom={1} className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-[1.1] tracking-tight">
+            <motion.h1 variants={fadeUp} custom={1} className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-semibold text-white mb-6 leading-[1.1] tracking-tight">
               Pakistan's Trusted
               <br />
-              <span className="text-primary">Lentil &amp; Pulse</span>
+              <span className="text-primary italic">Lentil &amp; Pulse</span>
               <br />
               Factory
             </motion.h1>
@@ -129,7 +129,7 @@ export default function Home() {
               viewport={{ once: true }}
               transition={{ delay: i * 0.1, duration: 0.4 }}
             >
-              <div className="text-3xl md:text-4xl font-bold text-primary-foreground">{s.value}</div>
+              <div className="text-3xl md:text-4xl font-display font-bold text-primary-foreground">{s.value}</div>
               <div className="text-sm text-primary-foreground/70 mt-1 font-medium">{s.label}</div>
             </motion.div>
           ))}
@@ -147,7 +147,7 @@ export default function Home() {
             transition={{ duration: 0.5 }}
           >
             <span className="text-sm font-semibold text-primary uppercase tracking-widest">Why Qais Foods</span>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mt-3 mb-4">Built on Quality & Trust</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mt-3 mb-4">Built on Quality &amp; Trust</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
               From farm to market, every step of our process is designed to deliver the finest lentils and pulses.
             </p>
@@ -166,7 +166,7 @@ export default function Home() {
                     <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5">
                       <f.icon className="h-8 w-8 text-primary" />
                     </div>
-                    <h3 className="font-bold text-foreground mb-2 text-lg">{f.title}</h3>
+                    <h3 className="font-semibold text-foreground mb-2 text-xl">{f.title}</h3>
                     <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
                   </CardContent>
                 </Card>
@@ -211,7 +211,7 @@ export default function Home() {
                     />
                   </div>
                   <CardContent className="p-6">
-                    <h3 className="font-bold text-lg text-foreground mb-2">{p.name}</h3>
+                    <h3 className="font-semibold text-xl text-foreground mb-2">{p.name}</h3>
                     <p className="text-sm text-muted-foreground leading-relaxed">{p.desc}</p>
                   </CardContent>
                 </Card>

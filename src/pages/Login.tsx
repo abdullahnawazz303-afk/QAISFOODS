@@ -75,8 +75,8 @@ export default function Login() {
             <div className="mx-auto w-14 h-14 rounded-xl bg-primary flex items-center justify-center mb-4">
               <Leaf className="h-7 w-7 text-primary-foreground" />
             </div>
-            <CardTitle className="text-2xl">Welcome Back</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-3xl ">Welcome Back</CardTitle>
+            <CardDescription className="text-base text-muted-foreground mt-2">
               Sign in to access the management system or your customer portal
             </CardDescription>
           </CardHeader>

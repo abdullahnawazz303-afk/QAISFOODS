@@ -212,7 +212,7 @@ const Sales = () => {
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold">Sales</h1>
+          <h1 className="text-2xl font-bold">Sales</h1>
           <p className="text-sm text-muted-foreground">
             Record sales and track customer payments
           </p>

@@ -305,7 +305,7 @@ const Inventory = () => {
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold">Inventory</h1>
+          <h1 className="text-2xl font-bold">Inventory</h1>
           <p className="text-sm text-muted-foreground">
             Batch-based inventory — each purchase creates a vendor payable automatically
           </p>

@@ -145,7 +145,7 @@ const Rokar = () => {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-2xl font-display font-bold">Daily Cash Flow</h1>
+          <h1 className="text-2xl font-bold">Daily Cash Flow</h1>
           <p className="text-sm text-muted-foreground">
             Daily cash register (Rokar)
           </p>

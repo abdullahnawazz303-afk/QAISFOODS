@@ -33,10 +33,6 @@ import { toast } from "sonner";
 import { formatDate, formatPKR, formatKG } from "@/lib/formatters";
 import type { Grade, OnlineOrderItem } from "@/types";
 
-const ITEM_OPTIONS = [
-  "دال ماش", "دال چنا", "دال مونگ",
-  "چاول", "چنے", "دال مسور", "ماش کی دال",
-];
 const GRADE_OPTIONS: Grade[] = ["A+", "A", "B", "C"];
 
 const statusVariant = (s: string) => {
@@ -79,6 +75,21 @@ const CustomerPortal = () => {
   const [currentPacking, setCurrentPacking] = useState("Loose");
   const [currentGrade, setCurrentGrade] = useState<Grade>("A");
   const [currentQty, setCurrentQty]     = useState("");
+
+  // ── Dynamic item names from Supabase (synced with Admin Inventory)
+  const [itemOptions, setItemOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchItemNames = async () => {
+      const { data } = await supabase
+        .from("item_names")
+        .select("name")
+        .eq("is_active", true)
+        .order("name", { ascending: true });
+      if (data) setItemOptions(data.map((d: any) => d.name));
+    };
+    fetchItemNames();
+  }, []);
 
   useEffect(() => {
     if (!customerId) return;
@@ -416,51 +427,66 @@ const CustomerPortal = () => {
                   <DialogHeader><DialogTitle>Place New Order</DialogTitle></DialogHeader>
                   <form onSubmit={handleOrderSubmit} className="space-y-4">
                     <div className="border rounded-lg p-3 space-y-3">
-                      <h4 className="font-medium text-sm">Items *</h4>
+                      <h4 className="font-medium text-sm">Order Items</h4>
+                      
+                      {/* Added Items List */}
                       {orderItems.map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between bg-muted rounded p-2 text-sm">
-                          <span>
-                            {item.itemName}{" "}
-                            <span className="text-muted-foreground">Grade {item.grade}</span>
-                            {item.packing && item.packing !== "Loose" && (
-                              <Badge variant="outline" className="ml-2 py-0 h-5 text-[10px]">{item.packing}</Badge>
+                        <div key={idx} className="grid grid-cols-[1fr_80px_1fr_1fr_40px] gap-2 items-center bg-muted/50 rounded-md border p-2 text-sm transition-all hover:bg-muted">
+                          <span className="font-medium truncate">{item.itemName}</span>
+                          <span className="text-muted-foreground">Grade {item.grade}</span>
+                          <div>
+                            {item.packing && item.packing !== "Loose" ? (
+                              <Badge variant="secondary" className="font-normal">{item.packing}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">Loose</span>
                             )}
-                            {" — "}
-                            <span className="font-medium">{formatKG(item.quantity)}</span>
-                          </span>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => removeOrderItem(idx)}>
-                            <Trash2 className="h-3 w-3" />
+                          </div>
+                          <span className="font-medium text-right pr-2">{formatKG(item.quantity)}</span>
+                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => removeOrderItem(idx)}>
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       ))}
-                      <div className="grid grid-cols-3 gap-2">
-                        <Select value={currentItem} onValueChange={setCurrentItem}>
-                          <SelectTrigger><SelectValue placeholder="Select item" /></SelectTrigger>
-                          <SelectContent>
-                            {ITEM_OPTIONS.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <Select value={currentPacking} onValueChange={setCurrentPacking}>
-                          <SelectTrigger className="w-24"><SelectValue placeholder="Packing" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Loose">Loose</SelectItem>
-                            <SelectItem value="0.5 kg">0.5 kg</SelectItem>
-                            <SelectItem value="1 kg">1 kg</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Select value={currentGrade} onValueChange={v => setCurrentGrade(v as Grade)}>
-                          <SelectTrigger><SelectValue placeholder="Grade" /></SelectTrigger>
-                          <SelectContent>
-                            {GRADE_OPTIONS.map(g => <SelectItem key={g} value={g}>Grade {g}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <div className="flex gap-1">
-                          <Input type="number" placeholder="kg" min={1}
-                            value={currentQty} onChange={e => setCurrentQty(e.target.value)} />
-                          <Button type="button" variant="outline" size="sm" onClick={addOrderItem}>
-                            <Plus className="h-4 w-4" />
-                          </Button>
+
+                      {/* Add Item Row Matrix */}
+                      <div className="grid grid-cols-1 sm:grid-cols-[1.5fr_1fr_1fr_1fr_auto] gap-2 items-end rounded-md border p-3 bg-muted/20">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Item</Label>
+                          <Select value={currentItem} onValueChange={setCurrentItem}>
+                            <SelectTrigger className="h-9"><SelectValue placeholder="Select item" /></SelectTrigger>
+                            <SelectContent>
+                              {itemOptions.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
                         </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Grade</Label>
+                          <Select value={currentGrade} onValueChange={v => setCurrentGrade(v as Grade)}>
+                            <SelectTrigger className="h-9"><SelectValue placeholder="Grade" /></SelectTrigger>
+                            <SelectContent>
+                              {GRADE_OPTIONS.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Packing</Label>
+                          <Select value={currentPacking} onValueChange={setCurrentPacking}>
+                            <SelectTrigger className="h-9"><SelectValue placeholder="Packing" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Loose">Loose</SelectItem>
+                              <SelectItem value="0.5 kg">0.5 kg</SelectItem>
+                              <SelectItem value="1 kg">1 kg</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-muted-foreground">Qty (kg)</Label>
+                          <Input type="number" placeholder="0" min={1} value={currentQty} 
+                            onChange={e => setCurrentQty(e.target.value)} className="h-9" />
+                        </div>
+                        <Button type="button" variant="secondary" size="icon" className="h-9 w-9 shrink-0" onClick={addOrderItem} title="Add to order">
+                          <Plus className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                     <div className="space-y-2">

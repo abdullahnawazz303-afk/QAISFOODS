@@ -70,7 +70,7 @@ export function TopNavbar() {
       <SidebarTrigger />
 
       <img src={qfLogo} alt="QF" className="w-9 h-9 object-contain" />
-      <span className="font-display font-bold text-lg text-primary">Qais Food</span>
+      <span className="font-semibold text-lg text-primary">Qais Food</span>
 
       <div className="flex-1" />
 
@@ -99,7 +99,9 @@ export function TopNavbar() {
                     <User className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{userEmail}</p>
+                    <p className="text-sm font-semibold truncate capitalize">
+                      {userEmail?.split('@')[0]?.replace(/[._]/g, ' ') || "Admin User"}
+                    </p>
                     <div className="flex items-center gap-1 mt-0.5">
                       <ShieldCheck className="h-3 w-3 text-muted-foreground" />
                       <p className="text-xs text-muted-foreground">{roleLabel}</p>
@@ -112,6 +114,12 @@ export function TopNavbar() {
 
               {/* Account info */}
               <div className="p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Name</span>
+                  <span className="font-medium truncate capitalize max-w-[160px]">
+                    {userEmail?.split('@')[0]?.replace(/[._]/g, ' ') || "Admin User"}
+                  </span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Email</span>
                   <span className="font-medium truncate max-w-[160px]">{userEmail}</span>

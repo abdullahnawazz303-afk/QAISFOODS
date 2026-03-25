@@ -185,7 +185,7 @@ const CustomerRequests = () => {
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold">Customer Requests</h1>
+          <h1 className="text-2xl font-bold">Customer Requests</h1>
           <p className="text-sm text-muted-foreground">
             Review new customer access requests
           </p>

@@ -202,7 +202,7 @@ const paged = sorted.slice(page * pageSize, (page + 1) * pageSize);
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold">Advance Bookings</h1>
+          <h1 className="text-2xl font-bold">Advance Bookings</h1>
           <p className="text-sm text-muted-foreground">Manage vendor contracts and advance payments</p>
         </div>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setItems([]); }}>

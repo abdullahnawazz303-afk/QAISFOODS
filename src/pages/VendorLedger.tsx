@@ -81,7 +81,7 @@ const VendorLedger = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold">Vendor Ledger</h1>
+          <h1 className="text-2xl font-bold">Vendor Ledger</h1>
           <p className="text-sm text-muted-foreground">View vendor transaction history</p>
         </div>
         <div className="flex gap-2">
