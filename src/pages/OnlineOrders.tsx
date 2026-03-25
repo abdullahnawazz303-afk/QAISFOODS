@@ -86,7 +86,7 @@ const OnlineOrders = () => {
       o.customerName.toLowerCase().includes(q) ||
       o.orderRef.toLowerCase().includes(q) ||
       o.id.toLowerCase().includes(q);
-    const matchStatus = statusFilter === "all" || o.status === statusFilter;
+    const matchStatus = statusFilter === "all" ? o.status !== "Cancelled" : o.status === statusFilter;
     return matchSearch && matchStatus;
   });
 

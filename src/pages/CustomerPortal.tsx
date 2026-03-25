@@ -237,7 +237,7 @@ const CustomerPortal = () => {
           </div>
           <div>
             <p className="font-semibold text-sm">{customerName || "Customer Portal"}</p>
-            <p className="text-xs text-muted-foreground">{userEmail}</p>
+            <p className="hidden sm:block text-xs text-muted-foreground">{userEmail}</p>
           </div>
         </div>
 
@@ -245,8 +245,8 @@ const CustomerPortal = () => {
           {/* Account Popover */}
           <Popover open={accountOpen} onOpenChange={v => { setAccountOpen(v); if (!v) setAccountView('profile'); }}>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <User className="h-4 w-4" />Account
+              <Button variant="outline" size="sm" className="gap-2 px-2 sm:px-3">
+                <User className="h-4 w-4" /><span className="hidden sm:inline">Account</span>
               </Button>
             </PopoverTrigger>
 
@@ -380,8 +380,8 @@ const CustomerPortal = () => {
           </Popover>
 
           <Button variant="ghost" size="sm" onClick={logout}
-            className="gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
-            <LogOut className="h-4 w-4" />Logout
+            className="gap-2 px-2 sm:px-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+            <LogOut className="h-4 w-4" /><span className="hidden sm:inline">Logout</span>
           </Button>
         </div>
       </div>
@@ -392,7 +392,7 @@ const CustomerPortal = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-2">
           <div className="rounded-lg border bg-card p-4">
             <p className="text-xs text-muted-foreground">Total Orders</p>
-            <p className="text-2xl font-bold">{orders.length}</p>
+            <p className="text-2xl font-bold">{orders.filter(o => o.status !== "Cancelled").length}</p>
           </div>
           <div className="rounded-lg border bg-card p-4">
             <p className="text-xs text-muted-foreground">Pending Orders</p>
@@ -518,7 +518,7 @@ const CustomerPortal = () => {
               <div className="flex items-center justify-center h-32 text-muted-foreground gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" /><span>Loading orders...</span>
               </div>
-            ) : orders.length === 0 ? (
+            ) : orders.filter(o => o.status !== "Cancelled").length === 0 ? (
               <div className="text-center py-12 border rounded-lg text-muted-foreground">
                 <Package className="h-10 w-10 mx-auto mb-2 opacity-30" />
                 <p className="font-medium">No orders yet</p>
@@ -538,7 +538,7 @@ const CustomerPortal = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orders.map(o => (
+                    {orders.filter(o => o.status !== "Cancelled").map(o => (
                       <TableRow key={o.id}>
                         <TableCell className="font-mono text-xs text-muted-foreground">
                           {o.orderRef || o.id.slice(0, 8)}

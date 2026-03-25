@@ -124,13 +124,13 @@ const Reports = () => {
       <DateFilter />
 
       <Tabs defaultValue="sales">
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="sales">Sales</TabsTrigger>
-          <TabsTrigger value="purchases">Purchases</TabsTrigger>
-          <TabsTrigger value="inventory">Inventory</TabsTrigger>
-          <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
-          <TabsTrigger value="vendorBalance">Vendor Balances</TabsTrigger>
-          <TabsTrigger value="customerBalance">Customer Balances</TabsTrigger>
+        <TabsList className="flex flex-col sm:inline-flex h-auto sm:h-10 w-full sm:w-auto gap-1 sm:gap-0 bg-transparent sm:bg-muted p-0 sm:p-1 items-stretch">
+          <TabsTrigger value="sales" className="w-full sm:w-auto border sm:border-0 bg-muted/50 sm:bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:data-[state=active]:bg-background sm:data-[state=active]:text-foreground justify-start sm:justify-center">Sales</TabsTrigger>
+          <TabsTrigger value="purchases" className="w-full sm:w-auto border sm:border-0 bg-muted/50 sm:bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:data-[state=active]:bg-background sm:data-[state=active]:text-foreground justify-start sm:justify-center">Purchases</TabsTrigger>
+          <TabsTrigger value="inventory" className="w-full sm:w-auto border sm:border-0 bg-muted/50 sm:bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:data-[state=active]:bg-background sm:data-[state=active]:text-foreground justify-start sm:justify-center">Inventory</TabsTrigger>
+          <TabsTrigger value="cashflow" className="w-full sm:w-auto border sm:border-0 bg-muted/50 sm:bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:data-[state=active]:bg-background sm:data-[state=active]:text-foreground justify-start sm:justify-center">Cash Flow</TabsTrigger>
+          <TabsTrigger value="vendorBalance" className="w-full sm:w-auto border sm:border-0 bg-muted/50 sm:bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:data-[state=active]:bg-background sm:data-[state=active]:text-foreground justify-start sm:justify-center">Vendor Balances</TabsTrigger>
+          <TabsTrigger value="customerBalance" className="w-full sm:w-auto border sm:border-0 bg-muted/50 sm:bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:data-[state=active]:bg-background sm:data-[state=active]:text-foreground justify-start sm:justify-center">Customer Balances</TabsTrigger>
         </TabsList>
 
         {/* ── Sales Report ── */}
