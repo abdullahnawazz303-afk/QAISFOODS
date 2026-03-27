@@ -83,7 +83,7 @@ const Dashboard = () => {
         <div>
           <p className="text-sm font-medium text-muted-foreground">Company Total Balance</p>
           <p className="text-2xl font-bold text-foreground tracking-tight">
-            {formatPKR(todayBalance + totalReceivables - totalPayables)}
+            {formatPKR(todayBalance + totalReceivables)}
           </p>
         </div>
         <div className="flex-1" />

@@ -6,6 +6,7 @@ interface VendorState {
   vendors: Vendor[];
   ledgerEntries: Record<string, LedgerEntry[]>;
   purchases: VendorPurchase[];
+  bookings: any[]; // Use any to avoid circular dependencies if needed, or import AdvanceBooking
   loading: boolean;
   error: string | null;
 
@@ -33,8 +34,9 @@ interface VendorState {
     paymentTermsDays: number;
     paymentMethod: string;
     notes: string;
+    referenceNumber?: string;
   }) => Promise<string | null>;
-  recordPayment: (purchaseId: string, vendorId: string, amount: number, method: string, notes: string) => Promise<void>;
+  recordPayment: (purchaseId: string, vendorId: string, amount: number, method: string, notes: string, referenceNumber?: string) => Promise<void>;
 
   getOutstanding: (vendorId: string) => number;
   getTotalPayables: () => number;
@@ -43,10 +45,23 @@ interface VendorState {
   getUpcomingPayables: (days: number) => VendorPayable[];
 }
 
+// ── Helper: get or create today's cash day and return its id
+const getOpenCashDayId = async (): Promise<string | null> => {
+  const today = new Date().toISOString().split('T')[0];
+  const { data: existing } = await supabase.from('cash_days').select('id, is_closed').eq('business_date', today).maybeSingle();
+  if (existing) return existing.is_closed ? null : existing.id;
+  const { data: lastClosed } = await supabase.from('cash_days').select('closing_balance').eq('is_closed', true).order('business_date', { ascending: false }).limit(1).maybeSingle();
+  const openingBalance = lastClosed?.closing_balance ?? 0;
+  const { data: newDay, error } = await supabase.from('cash_days').insert({ business_date: today, opening_balance: openingBalance, is_closed: false }).select('id').single();
+  if (error) return null;
+  return newDay.id;
+};
+
 export const useVendorStore = create<VendorState>((set, get) => ({
   vendors: [],
   ledgerEntries: {},
   purchases: [],
+  bookings: [],
   loading: false,
   error: null,
 
@@ -54,9 +69,14 @@ export const useVendorStore = create<VendorState>((set, get) => ({
   fetchVendors: async () => {
     set({ loading: true, error: null });
 
-    const [{ data: vendorData, error: vendorError }, { data: ledgerData }] = await Promise.all([
+    const [
+      { data: vendorData, error: vendorError },
+      { data: ledgerData },
+      { data: bookingData }
+    ] = await Promise.all([
       supabase.from('vendors').select('*').order('name'),
       supabase.from('vendor_ledger').select('*').order('created_at', { ascending: true }),
+      supabase.from('advance_bookings').select('*, booking_items(*), booking_payments(*)')
     ]);
 
     if (vendorError) { set({ error: vendorError.message, loading: false }); return; }
@@ -88,7 +108,27 @@ export const useVendorStore = create<VendorState>((set, get) => ({
       });
     }
 
-    set({ vendors, ledgerEntries, loading: false });
+    const bookings = (bookingData || []).map((row: any) => ({
+      id: row.id,
+      bookingRef: row.booking_ref ?? row.id.slice(0, 8).toUpperCase(),
+      bookingDate: row.booking_date,
+      vendorId: row.vendor_id,
+      expectedDeliveryDate: row.expected_delivery_date,
+      totalValue: row.total_value,
+      advancePaid: row.advance_paid,
+      remainingBalance: row.remaining_balance,
+      status: row.status,
+      items: (row.booking_items || []).map((i: any) => ({
+        itemName: i.item_name,
+        grade: i.grade,
+        quantity: i.quantity_kg,
+        agreedPrice: i.agreed_price_per_kg,
+        subtotal: i.subtotal,
+      })),
+      notes: row.notes ?? '',
+    }));
+
+    set({ vendors, ledgerEntries, bookings, loading: false });
   },
 
   // ── Fetch single vendor ledger
@@ -345,7 +385,6 @@ export const useVendorStore = create<VendorState>((set, get) => ({
         grade: i.grade,
         quantity_kg: i.quantityKg,
         price_per_kg: i.pricePerKg,
-        subtotal: i.quantityKg * i.pricePerKg,
       }))
     );
 
@@ -365,6 +404,49 @@ export const useVendorStore = create<VendorState>((set, get) => ({
         debit: p.amountPaid,
         credit: 0,
       });
+
+      // Log upfront payment into vendor_payments for tracing during deletion
+      await supabase.from('vendor_payments').insert({
+        vendor_id: p.vendorId,
+        amount: p.amountPaid,
+        payment_date: p.purchaseDate,
+        payment_method: p.paymentMethod || 'Cash',
+        notes: p.notes || `Upfront payment (${p.paymentMethod || 'Cash'})`,
+        reference_id: data.id,
+        reference_type: 'purchase',
+        reference_number: p.referenceNumber || null
+      });
+
+      const isBankOrCheque = p.paymentMethod === 'Bank Transfer' || p.paymentMethod === 'Cheque';
+
+      if (isBankOrCheque) {
+        const chequeNumber = p.referenceNumber || `BTC-${Date.now().toString().slice(-6)}`;
+        await supabase.from('cheques').insert({
+          cheque_number: chequeNumber,
+          vendor_id: p.vendorId,
+          amount: p.amountPaid,
+          issue_date: p.purchaseDate,
+          expected_clearance_date: p.purchaseDate,
+          bank_name: p.paymentMethod === 'Bank Transfer' ? 'Bank Transfer' : 'Vendor Cheque',
+          status: 'Cleared',
+          notes: `Upfront payment for purchase — ${p.notes || ''}`,
+          reference_id: data.id,
+          reference_type: 'VENDOR_PURCHASE'
+        });
+      } else {
+        const cashDayId = await getOpenCashDayId();
+        if (cashDayId) {
+          await supabase.from('cash_entries').insert({
+            cash_day_id: cashDayId,
+            entry_type: 'out',
+            category: 'Vendor Payment',
+            amount: p.amountPaid,
+            description: `Upfront payment for purchase`,
+            reference_id: data.id,
+            reference_type: 'VENDOR_PURCHASE'
+          });
+        }
+      }
     }
 
     await get().fetchPurchases();
@@ -372,7 +454,7 @@ export const useVendorStore = create<VendorState>((set, get) => ({
   },
 
   // ── Record payment against a purchase
-  recordPayment: async (purchaseId, vendorId, amount, method, notes) => {
+  recordPayment: async (purchaseId, vendorId, amount, method, notes, referenceNumber) => {
     const purchase = get().purchases.find(p => p.id === purchaseId);
     if (!purchase) return;
 
@@ -385,47 +467,88 @@ export const useVendorStore = create<VendorState>((set, get) => ({
       .update({ amount_paid: newPaid, payment_status: paymentStatus })
       .eq('id', purchaseId);
 
-    await supabase.from('vendor_payments').insert({
+    const today = new Date().toISOString().split('T')[0];
+
+    // Insert vendor_payment record (linked to purchase for cleanup on deletion)
+    const { data: paymentRecord, error: paymentError } = await supabase.from('vendor_payments').insert({
       vendor_id: vendorId,
-      purchase_id: purchaseId,
       amount,
-      payment_date: new Date().toISOString().split('T')[0],
+      payment_date: today,
       payment_method: method,
       notes: notes ?? null,
-    });
+      reference_id: purchaseId,
+      reference_type: 'purchase',
+      reference_number: referenceNumber || null
+    }).select('id').single();
+
+    if (paymentError) {
+      console.error("Failed to insert vendor payment:", paymentError.message);
+      return;
+    }
 
     await get().addLedgerEntry(vendorId, {
-      date: new Date().toISOString().split('T')[0],
+      date: today,
       type: 'Payment Made',
-      description: notes || `Payment for purchase`,
+      description: notes || `Payment via ${method} for purchase`,
       debit: amount,
       credit: 0,
     });
 
+    // ── Route payment to correct financial register based on method
+    const isBankOrCheque = method === 'Bank Transfer' || method === 'Cheque';
+
+    if (isBankOrCheque) {
+      // Bank Transfer / Cheque → create a cheques record so it appears on Bank & Cheques page
+      const chequeNumber = referenceNumber || `BT-${Date.now().toString().slice(-6)}`; // Auto-ref for bank transfers
+      const { error: chequeErr } = await supabase.from('cheques').insert({
+        cheque_number: chequeNumber,
+        vendor_id: vendorId,
+        amount,
+        issue_date: today,
+        expected_clearance_date: today,
+        bank_name: method === 'Bank Transfer' ? 'Bank Transfer' : 'Cheque Payment',
+        status: 'Cleared', // Bank transfers are instant — mark cleared
+        notes: `${method} for purchase — ${notes || ''}`,
+        reference_id: purchaseId,
+        reference_type: 'VENDOR_PURCHASE',
+      });
+      if (chequeErr) console.error("Failed to insert cheque:", chequeErr.message);
+    } else {
+      // Cash → only goes to cash_entries
+      const cashDayId = await getOpenCashDayId();
+      if (cashDayId) {
+        await supabase.from('cash_entries').insert({
+          cash_day_id: cashDayId,
+          entry_type: 'out',
+          category: 'Vendor Payment',
+          amount: amount,
+          description: notes || `Payment for purchase`,
+          reference_id: purchaseId,
+          reference_type: 'VENDOR_PURCHASE',
+        });
+      }
+    }
+
     await get().fetchPurchases();
   },
 
+
   // ── Computed
   getOutstanding: (vendorId) => {
-    const entries = get().ledgerEntries[vendorId] || [];
-    if (entries.length === 0) return 0;
-    return entries[entries.length - 1].balance;
+    return Math.max(0, get().getPayables()
+      .filter(p => p.vendorId === vendorId)
+      .reduce((s, p) => s + p.remainingAmount, 0));
   },
 
   getTotalPayables: () => {
-    let total = 0;
-    for (const entries of Object.values(get().ledgerEntries)) {
-      if (entries.length > 0) {
-        const bal = entries[entries.length - 1].balance;
-        if (bal > 0) total += bal;
-      }
-    }
-    return total;
+    return get().getPayables().reduce((sum, p) => sum + p.remainingAmount, 0);
   },
 
   getPayables: () => {
     const today = new Date().toISOString().split('T')[0];
-    return get().purchases
+    
+    // 1. From Vendor Purchases
+    const purchasePayables: VendorPayable[] = get().purchases
       .filter(p => p.outstanding > 0)
       .map(p => ({
         id: p.id,
@@ -444,7 +567,35 @@ export const useVendorStore = create<VendorState>((set, get) => ({
           return 'Pending' as const;
         })(),
         description: p.items.map((i: any) => i.itemName).join(', ') || 'Stock Purchase',
+        type: 'purchase' as any,
       }));
+
+    // 2. From Advance Bookings
+    const bookingPayables: VendorPayable[] = get().bookings
+      .filter(b => b.remainingBalance > 0 && b.status !== 'Cancelled')
+      .map(b => ({
+        id: b.id,
+        vendorId: b.vendorId,
+        purchaseRef: b.bookingRef,
+        purchaseDate: b.bookingDate,
+        dueDate: b.expectedDeliveryDate,
+        paymentTermsDays: 0,
+        totalAmount: b.totalValue,
+        paidAmount: b.advancePaid,
+        remainingAmount: b.remainingBalance,
+        status: (() => {
+          if (b.remainingBalance <= 0) return 'Paid' as const;
+          if (b.expectedDeliveryDate < today) return 'Overdue' as const;
+          if (b.advancePaid > 0) return 'Partially Paid' as const;
+          return 'Pending' as const;
+        })(),
+        description: `Booking: ${b.items.map((i: any) => i.itemName).join(', ') || 'Contract'}`,
+        type: 'booking' as any,
+      }));
+
+    return [...purchasePayables, ...bookingPayables].sort((a, b) => 
+      new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()
+    );
   },
 
   getOverduePayables: () => {

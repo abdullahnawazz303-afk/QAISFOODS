@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useCustomerStore } from "@/stores/customerStore";
 import { useSalesStore } from "@/stores/salesStore";
 import { useCashFlowStore } from "@/stores/cashFlowStore";
-import { useCompanyBalanceStore } from "@/stores/companyBalanceStore";
 import { formatPKR, getTodayISO } from "@/lib/formatters";
 import { toast } from "sonner";
 
@@ -29,10 +28,8 @@ const RecordPaymentDialog = ({
   preSelectedCustomerId,
   preSelectedSaleId,
 }: RecordPaymentDialogProps) => {
-  const { customers, addLedgerEntry } = useCustomerStore();
+  const { customers } = useCustomerStore();
   const { sales, addPayment } = useSalesStore();
-  const { addEntry: addCashEntry } = useCashFlowStore();
-  const companyBalance = useCompanyBalanceStore();
 
   const [customerId, setCustomerId] = useState(preSelectedCustomerId || "");
   const [saleId, setSaleId] = useState(preSelectedSaleId || "");
@@ -89,29 +86,8 @@ const RecordPaymentDialog = ({
       return;
     }
 
-    // 1. Update sale payment status
-    addPayment(saleId, payAmount);
-
-    // 2. Add customer ledger entry (credit = payment received)
-    const methodLabel = method !== "Cash" ? ` (${method})` : "";
-    addLedgerEntry(customerId, {
-      date,
-      type: "Payment Received",
-      description: `Payment for ${saleId}${methodLabel}${notes ? " — " + notes : ""}`,
-      debit: 0,
-      credit: payAmount,
-    });
-
-    // 3. Add cash flow entry
-    addCashEntry(date, {
-      type: "in",
-      category: "Customer Payment",
-      amount: payAmount,
-      description: `Payment from ${customers.find((c) => c.id === customerId)?.name || "customer"} for ${saleId}`,
-    });
-
-    // 4. Update company balance
-    companyBalance.addSalesIncome(payAmount);
+    // 1. Update sale payment status natively (handles cash flow, DB, and cheques)
+    addPayment(saleId, payAmount, method, notes);
 
     handleOpenChange(false);
     toast.success(
@@ -128,6 +104,7 @@ const RecordPaymentDialog = ({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Record Customer Payment</DialogTitle>
+          <DialogDescription>Apply a payment to a customer's outstanding sale.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Customer */}

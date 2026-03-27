@@ -172,6 +172,7 @@ export interface VendorPayable {
   remainingAmount: number;
   status: PayableStatus;
   description: string;
+  type?: 'purchase' | 'booking';
 }
 
 // ─── Sales ────────────────────────────────────────────

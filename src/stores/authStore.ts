@@ -23,7 +23,7 @@ async function fetchUserProfile(userId: string): Promise<{ role: UserRole; custo
     .from('users')
     .select('role, customer_id')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
     return { role: 'viewer', customerId: null };

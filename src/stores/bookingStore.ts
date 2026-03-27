@@ -8,8 +8,8 @@ interface BookingState {
   error: string | null;
 
   fetchBookings: () => Promise<void>;
-  addBooking: (b: Omit<AdvanceBooking, 'id' | 'bookingRef' | 'totalValue' | 'remainingBalance' | 'payments'> & { advancePaid: number }) => Promise<string | null>;
-  addPayment: (bookingId: string, amount: number, notes: string) => Promise<void>;
+  addBooking: (b: Omit<AdvanceBooking, 'id' | 'bookingRef' | 'totalValue' | 'remainingBalance' | 'payments'> & { advancePaid: number; paymentMethod?: string; referenceNumber?: string }) => Promise<string | null>;
+  addPayment: (bookingId: string, amount: number, notes: string, method?: string, referenceNumber?: string) => Promise<void>;
   updateStatus: (bookingId: string, status: BookingStatus) => Promise<void>;
   markDelivered: (bookingId: string) => Promise<void>;
   deleteBooking: (bookingId: string) => Promise<boolean>;
@@ -105,14 +105,92 @@ export const useBookingStore = create<BookingState>((set, get) => ({
       );
     }
 
+    const bookingRef = data.booking_ref || data.id.slice(0, 8).toUpperCase();
+
+    // ── Auto-post the purchase LIABILITY to vendor ledger
+    const { data: lastRow } = await supabase
+      .from('vendor_ledger')
+      .select('running_balance')
+      .eq('vendor_id', b.vendorId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const lastBalance = lastRow?.running_balance ?? 0;
+    const newBalanceAfterPurchase = lastBalance + totalValue;
+
+    await supabase.from('vendor_ledger').insert({
+      vendor_id: b.vendorId,
+      entry_date: b.bookingDate,
+      transaction_type: 'Purchase',
+      description: `Advance Booking ${bookingRef} — Total value payable to vendor`,
+      debit: 0,
+      credit: totalValue,
+      running_balance: newBalanceAfterPurchase,
+      reference_type: 'BOOKING',
+      reference_id: data.id,
+    });
+
     // Insert initial advance payment if any
-    if (b.advancePaid > 0) {
+    if ((b.advancePaid ?? 0) > 0) {
       await supabase.from('booking_payments').insert({
         booking_id: data.id,
         amount: b.advancePaid,
         paid_at: b.bookingDate,
         notes: 'Initial advance payment',
       });
+
+      const remainingAfterAdvance = totalValue - (b.advancePaid ?? 0);
+
+      // ── Post advance payment to vendor_ledger (reduces liability)
+      await supabase.from('vendor_ledger').insert({
+        vendor_id: b.vendorId,
+        entry_date: b.bookingDate,
+        transaction_type: 'Payment Made',
+        description: `Advance Booking ${bookingRef} — Advance paid: ${b.advancePaid?.toLocaleString()} | Remaining: ${remainingAfterAdvance.toLocaleString()}`,
+        debit: b.advancePaid,
+        credit: 0,
+        running_balance: newBalanceAfterPurchase - (b.advancePaid ?? 0),
+        reference_type: 'BOOKING',
+        reference_id: data.id,
+      });
+
+      // ── Record cash outflow or cheque
+      const method = b.paymentMethod || 'Cash';
+      const isBankOrCheque = method === 'Bank Transfer' || method === 'Cheque';
+
+      if (isBankOrCheque) {
+        const chequeNumber = b.referenceNumber || `BTC-${Date.now().toString().slice(-6)}`;
+        await supabase.from('cheques').insert({
+          cheque_number: chequeNumber,
+          vendor_id: b.vendorId,
+          amount: b.advancePaid,
+          issue_date: b.bookingDate,
+          expected_clearance_date: b.bookingDate,
+          bank_name: method === 'Bank Transfer' ? 'Bank Transfer' : 'Vendor Cheque',
+          status: 'Cleared',
+          notes: `Advance payment for Booking ${bookingRef} — ${b.notes || ''}`,
+          reference_type: 'BOOKING',
+          reference_id: data.id,
+        });
+      } else {
+        const today = new Date().toISOString().split('T')[0];
+        const { data: todayDay } = await supabase
+          .from('cash_days')
+          .select('id, is_closed')
+          .eq('business_date', today)
+          .maybeSingle();
+        if (todayDay && !todayDay.is_closed) {
+          await supabase.from('cash_entries').insert({
+            cash_day_id: todayDay.id,
+            entry_type: 'out',
+            category: 'Vendor Payment',
+            amount: b.advancePaid,
+            description: `Advance payment for Booking ${bookingRef}`,
+            reference_type: 'BOOKING',
+            reference_id: data.id,
+          });
+        }
+      }
     }
 
     await get().fetchBookings();
@@ -121,18 +199,22 @@ export const useBookingStore = create<BookingState>((set, get) => ({
   },
 
   // ── Add a payment to an existing booking
-  addPayment: async (bookingId, amount, notes) => {
+  // Auto-posts vendor_ledger entry + cash_entries — callers must NOT post again.
+  addPayment: async (bookingId, amount, notes, method = 'Cash', referenceNumber) => {
     const booking = get().bookings.find(b => b.id === bookingId);
     if (!booking) return;
 
     const appliedAmount = Math.min(Math.max(amount, 0), booking.remainingBalance);
     if (appliedAmount === 0) return;
 
+    const today = new Date().toISOString().split('T')[0];
+    const bookingRef = booking.bookingRef || bookingId.slice(0, 8).toUpperCase();
+
     // Insert payment record
     await supabase.from('booking_payments').insert({
       booking_id: bookingId,
       amount: appliedAmount,
-      paid_at: new Date().toISOString().split('T')[0],
+      paid_at: today,
       notes: notes ?? null,
     });
 
@@ -148,11 +230,67 @@ export const useBookingStore = create<BookingState>((set, get) => ({
 
     await supabase
       .from('advance_bookings')
-      .update({
-        advance_paid: newAdvancePaid,
-        status: newStatus,
-      })
+      .update({ advance_paid: newAdvancePaid, status: newStatus })
       .eq('id', bookingId);
+
+    // ── Auto-post vendor_ledger entry with booking ref and remaining balance
+    const { data: lastRow } = await supabase
+      .from('vendor_ledger')
+      .select('running_balance')
+      .eq('vendor_id', booking.vendorId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const lastBalance = lastRow?.running_balance ?? 0;
+    const newBalance = lastBalance - appliedAmount;
+
+    await supabase.from('vendor_ledger').insert({
+      vendor_id: booking.vendorId,
+      entry_date: today,
+      transaction_type: 'Payment Made',
+      description: `Booking ${bookingRef} — Paid: ${appliedAmount.toLocaleString()} | Remaining: ${Math.max(newRemaining, 0).toLocaleString()}${notes ? ` | ${notes}` : ''}`,
+      debit: appliedAmount,
+      credit: 0,
+      running_balance: newBalance,
+      reference_type: 'BOOKING',
+      reference_id: bookingId,
+    });
+
+    // ── Auto-post cash outflow or cheque
+    const isBankOrCheque = method === 'Bank Transfer' || method === 'Cheque';
+
+    if (isBankOrCheque) {
+      const chequeNumber = referenceNumber || `BTC-${Date.now().toString().slice(-6)}`;
+      await supabase.from('cheques').insert({
+        cheque_number: chequeNumber,
+        vendor_id: booking.vendorId,
+        amount: appliedAmount,
+        issue_date: today,
+        expected_clearance_date: today,
+        bank_name: method === 'Bank Transfer' ? 'Bank Transfer' : 'Vendor Cheque',
+        status: 'Cleared',
+        notes: `Payment for Booking ${bookingRef}${notes ? ` — ${notes}` : ''}`,
+        reference_type: 'BOOKING',
+        reference_id: bookingId,
+      });
+    } else {
+      const { data: todayDay } = await supabase
+        .from('cash_days')
+        .select('id, is_closed')
+        .eq('business_date', today)
+        .maybeSingle();
+      if (todayDay && !todayDay.is_closed) {
+        await supabase.from('cash_entries').insert({
+          cash_day_id: todayDay.id,
+          entry_type: 'out',
+          category: 'Vendor Payment',
+          amount: appliedAmount,
+          description: `Payment for Booking ${bookingRef}${notes ? ` — ${notes}` : ''}`,
+          reference_type: 'BOOKING',
+          reference_id: bookingId,
+        });
+      }
+    }
 
     await get().fetchBookings();
   },

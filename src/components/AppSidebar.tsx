@@ -57,7 +57,7 @@ export function AppSidebar() {
           { count: cheques }
         ] = await Promise.all([
           supabase.from("customer_requests").select("*", { count: "exact", head: true }).eq("status", "Pending"),
-          supabase.from("advance_bookings").select("*", { count: "exact", head: true }).neq("status", "Fully Paid"),
+          supabase.from("advance_bookings").select("*", { count: "exact", head: true }).not("status", "in", '("Completed", "Cancelled")'),
           supabase.from("online_orders").select("*", { count: "exact", head: true }).eq("status", "Pending"),
           supabase.from("cheques").select("*", { count: "exact", head: true }).eq("status", "Pending")
         ]);

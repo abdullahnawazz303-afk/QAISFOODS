@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,9 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useVendorStore } from "@/stores/vendorStore";
-import { useVendorPayableStore } from "@/stores/vendorPayableStore";
-import { useCashFlowStore } from "@/stores/cashFlowStore";
-import { useCompanyBalanceStore } from "@/stores/companyBalanceStore";
 import { formatPKR, formatDate, getTodayISO } from "@/lib/formatters";
 import { toast } from "sonner";
 import type { PaymentMethod, VendorPayable } from "@/types";
@@ -27,10 +24,7 @@ const VendorPaymentDialog = ({
   preSelectedVendorId,
   preSelectedPayableId,
 }: VendorPaymentDialogProps) => {
-  const { vendors, addLedgerEntry, getOutstanding } = useVendorStore();
-  const { payables, addPayment } = useVendorPayableStore();
-  const { addEntry: addCashEntry } = useCashFlowStore();
-  const companyBalance = useCompanyBalanceStore();
+  const { vendors, recordPayment, getOutstanding, getPayables } = useVendorStore();
 
   const [vendorId, setVendorId] = useState(preSelectedVendorId || "");
   const [payableId, setPayableId] = useState(preSelectedPayableId || "");
@@ -53,11 +47,11 @@ const VendorPaymentDialog = ({
 
   // Get pending payables for the selected vendor
   const vendorPayables = useMemo(
-    () => payables.filter((p) => p.vendorId === vendorId && p.remainingAmount > 0),
-    [payables, vendorId]
+    () => getPayables().filter((p) => p.vendorId === vendorId && p.remainingAmount > 0),
+    [getPayables, vendorId]
   );
 
-  const selectedPayable = payables.find((p) => p.id === payableId);
+  const selectedPayable = getPayables().find((p) => p.id === payableId);
   const maxAmount = selectedPayable ? selectedPayable.remainingAmount : 0;
   const vendorOutstanding = vendorId ? getOutstanding(vendorId) : 0;
 
@@ -95,33 +89,8 @@ const VendorPaymentDialog = ({
 
     const vendor = vendors.find((v) => v.id === vendorId);
 
-    // 1. Update vendor payable
-    const success = addPayment(vendorId, payableId, payAmount, method, notes, date);
-    if (!success) {
-      toast.error("Failed to record payment");
-      return;
-    }
-
-    // 2. Add vendor ledger entry (debit = we owe vendor less)
-    const methodLabel = method !== "Cash" ? ` (${method})` : "";
-    addLedgerEntry(vendorId, {
-      date,
-      type: "Payment Made",
-      description: `Vendor Payment${methodLabel}${notes ? " — " + notes : ""}`,
-      debit: payAmount,
-      credit: 0,
-    });
-
-    // 3. Add cash flow entry (cash out)
-    addCashEntry(date, {
-      type: "out",
-      category: "Vendor Payment",
-      amount: payAmount,
-      description: `Payment to ${vendor?.name || "vendor"} for ${selectedPayable.description}`,
-    });
-
-    // 4. Update company balance
-    companyBalance.addVendorPayment(payAmount);
+    // 1. Record payment via central store (handles DB, cash flow, cheques, ledger)
+    recordPayment(payableId, vendorId, payAmount, method, notes);
 
     const newRemainingOnPayable = selectedPayable.remainingAmount - payAmount;
     
@@ -140,6 +109,7 @@ const VendorPaymentDialog = ({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Pay Vendor</DialogTitle>
+          <DialogDescription>Record a payment to a vendor for an outstanding purchase.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Vendor */}

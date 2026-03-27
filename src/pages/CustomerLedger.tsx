@@ -4,14 +4,14 @@ import { useSalesStore } from "@/stores/salesStore";
 import { EmptyState } from "@/components/EmptyState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Printer, CreditCard, Loader2 } from "lucide-react";
+import { Printer, CreditCard, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { formatPKR, formatDate, getTodayISO } from "@/lib/formatters";
+import { formatPKR, formatDate } from "@/lib/formatters";
 
 const CustomerLedger = () => {
   const {
@@ -26,8 +26,6 @@ const CustomerLedger = () => {
   const { sales, fetchSales, addPayment } = useSalesStore();
 
   const [selectedCustomer, setSelectedCustomer] = useState("");
-  const [open, setOpen]             = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
   const [payOpen, setPayOpen]       = useState(false);
   const [payingSale, setPayingSale] = useState<{
@@ -64,25 +62,7 @@ const CustomerLedger = () => {
     ) ?? null;
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const fd     = new FormData(e.currentTarget);
-    const type   = fd.get("type") as string;
-    const amount = Number(fd.get("amount"));
-    setSubmitting(true);
-    await addLedgerEntry(selectedCustomer, {
-      date:        fd.get("date") as string || getTodayISO(),
-      type,
-      description: fd.get("description") as string,
-      debit:  type === "Adjustment" ? amount : 0,
-      credit: type === "Payment Received" ? amount : 0,
-    });
-    setSubmitting(false);
-    setOpen(false);
-    toast.success("Ledger entry added");
-  };
-
-  const openPayDialog = (saleId: string, outstanding: number) => {
+const openPayDialog = (saleId: string, outstanding: number) => {
     const sale = sales.find(s => s.id === saleId);
     setPayingSale({ id: saleId, outstanding, customerName: sale?.customerName ?? customer?.name ?? "" });
     setPayAmount(String(outstanding));
@@ -111,9 +91,9 @@ const CustomerLedger = () => {
 
   const exportCSV = () => {
     if (allEntries.length === 0) return;
-    const headers = "Date,Type,Description,Debit,Credit,Balance\n";
+    const headers = "Date,Type,Description,Debit,Credit\n";
     const rows    = allEntries
-      .map(e => `${e.date},${e.type},${e.description},${e.debit},${e.credit},${e.balance}`)
+      .map(e => `${e.date},${e.type},${e.description},${e.debit},${e.credit}`)
       .join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv" });
     const url  = URL.createObjectURL(blob);
@@ -134,46 +114,6 @@ const CustomerLedger = () => {
           <p className="text-sm text-muted-foreground">View customer transaction history</p>
         </div>
         <div className="flex gap-2">
-          {selectedCustomer && (
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button><Plus className="h-4 w-4 mr-2" /> Add Entry</Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Add Ledger Entry</DialogTitle></DialogHeader>
-                <p className="text-xs text-muted-foreground px-1">
-                  Sales appear automatically when recorded. Use this only for payments or adjustments.
-                </p>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Type</Label>
-                    <Select name="type" required>
-                      <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Payment Received">Payment Received</SelectItem>
-                        <SelectItem value="Adjustment">Adjustment</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Amount (PKR)</Label>
-                    <Input name="amount" type="number" min="1" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Date</Label>
-                    <Input name="date" type="date" defaultValue={getTodayISO()} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Description</Label>
-                    <Input name="description" required />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={submitting}>
-                    {submitting ? "Saving..." : "Add Entry"}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-          )}
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="h-4 w-4 mr-2" /> Print
           </Button>
@@ -200,8 +140,7 @@ const CustomerLedger = () => {
           description="Choose a customer from the dropdown to view their ledger." />
       ) : allEntries.length === 0 ? (
         <EmptyState title="No transactions yet"
-          description={`No ledger entries for ${customer?.name}. Transactions appear here automatically when sales are recorded.`}
-          actionLabel="Add Entry" onAction={() => setOpen(true)} />
+          description={`No ledger entries for ${customer?.name}. Transactions appear here automatically when sales are recorded or payments received.`} />
       ) : (
         <>
           {/* Summary Cards */}
@@ -235,7 +174,6 @@ const CustomerLedger = () => {
                   <TableHead>Description</TableHead>
                   <TableHead className="text-right">Debit</TableHead>
                   <TableHead className="text-right">Credit</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Action</TableHead>
                 </TableRow>
@@ -255,9 +193,6 @@ const CustomerLedger = () => {
                       </TableCell>
                       <TableCell className="text-right">
                         {e.credit > 0 ? formatPKR(e.credit) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatPKR(e.balance)}
                       </TableCell>
                       <TableCell>
                         {e.type === "Sale" && (

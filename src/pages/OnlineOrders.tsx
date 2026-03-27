@@ -26,7 +26,6 @@ import { CheckCircle, XCircle, Truck, Loader2, RefreshCw, Trash2 } from "lucide-
 import { toast } from "sonner";
 import type { OnlineOrderStatus } from "@/types";
 
-// ── Status badge variant
 const statusVariant = (s: string): "default" | "secondary" | "destructive" | "outline" => {
   switch (s) {
     case "Pending":   return "secondary";
@@ -37,17 +36,12 @@ const statusVariant = (s: string): "default" | "secondary" | "destructive" | "ou
   }
 };
 
-// ── Cancellation label — shows who cancelled
 const cancelLabel = (cancelReason?: string) => {
   if (!cancelReason) return null;
   if (cancelReason.toLowerCase().includes("customer")) {
-    return (
-      <span className="text-xs text-muted-foreground ml-1">(by customer)</span>
-    );
+    return <span className="text-xs text-muted-foreground ml-1">(by customer)</span>;
   }
-  return (
-    <span className="text-xs text-muted-foreground ml-1">(by admin)</span>
-  );
+  return <span className="text-xs text-muted-foreground ml-1">(by admin)</span>;
 };
 
 const OnlineOrders = () => {
@@ -55,15 +49,14 @@ const OnlineOrders = () => {
   const { addSale } = useSalesStore();
   const { batches, fetchBatches } = useInventoryStore();
 
-  const [search, setSearch]             = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch]                   = useState("");
+  const [statusFilter, setStatusFilter]       = useState("all");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [adminNotes, setAdminNotes]     = useState("");
-  const [updating, setUpdating]         = useState(false);
-  const [page, setPage]                 = useState(1);
+  const [adminNotes, setAdminNotes]           = useState("");
+  const [updating, setUpdating]               = useState(false);
+  const [page, setPage]                       = useState(1);
   const pageSize = 10;
 
-  // Delivery dialog state
   const [deliveryOpen, setDeliveryOpen]       = useState(false);
   const [deliveryOrderId, setDeliveryOrderId] = useState<string | null>(null);
   const [itemPrices, setItemPrices]           = useState<Record<number, string>>({});
@@ -71,7 +64,6 @@ const OnlineOrders = () => {
   const [deliveryNotes, setDeliveryNotes]     = useState("");
   const [submitting, setSubmitting]           = useState(false);
 
-  // Auto-refresh every 30 seconds so cancelled orders appear
   useEffect(() => {
     fetchOrders();
     fetchBatches();
@@ -86,7 +78,9 @@ const OnlineOrders = () => {
       o.customerName.toLowerCase().includes(q) ||
       o.orderRef.toLowerCase().includes(q) ||
       o.id.toLowerCase().includes(q);
-    const matchStatus = statusFilter === "all" ? o.status !== "Cancelled" : o.status === statusFilter;
+    const matchStatus = statusFilter === "all"
+      ? o.status !== "Cancelled"
+      : o.status === statusFilter;
     return matchSearch && matchStatus;
   });
 
@@ -95,7 +89,6 @@ const OnlineOrders = () => {
   const order         = selectedOrderId ? orders.find((o) => o.id === selectedOrderId) : null;
   const deliveryOrder = deliveryOrderId ? orders.find((o) => o.id === deliveryOrderId) : null;
 
-  // ── Get purchase price reference for an item+grade from inventory
   const getPurchasePrice = (itemName: string, grade: string): number | null => {
     const matching = batches
       .filter(b => b.itemName === itemName && b.grade === grade && b.remainingQuantity > 0)
@@ -103,18 +96,14 @@ const OnlineOrders = () => {
     return matching.length > 0 ? matching[0].purchasePrice : null;
   };
 
-  // ── Open delivery dialog — pre-fill prices from latest inventory batch
   const openDeliveryDialog = (orderId: string) => {
     const o = orders.find(ord => ord.id === orderId);
     if (!o) return;
-
-    // Pre-fill each item's price with latest purchase price as reference
     const prices: Record<number, string> = {};
     o.items.forEach((item, idx) => {
       const cost = getPurchasePrice(item.itemName, item.grade);
       prices[idx] = cost ? String(cost) : "";
     });
-
     setDeliveryOrderId(orderId);
     setItemPrices(prices);
     setAmountPaid("0");
@@ -123,12 +112,10 @@ const OnlineOrders = () => {
     setDeliveryOpen(true);
   };
 
-  // ── Compute totals from per-item prices
   const computeTotals = () => {
     if (!deliveryOrder) return { totalAmount: 0, paid: 0, outstanding: 0 };
     const totalAmount = deliveryOrder.items.reduce((sum, item, idx) => {
-      const price = Number(itemPrices[idx]) || 0;
-      return sum + item.quantity * price;
+      return sum + item.quantity * (Number(itemPrices[idx]) || 0);
     }, 0);
     const paid = Math.min(Number(amountPaid) || 0, totalAmount);
     return { totalAmount, paid, outstanding: totalAmount - paid };
@@ -143,24 +130,20 @@ const OnlineOrders = () => {
     setUpdating(false);
     if (ok) {
       toast.success(`Order marked as ${status}`);
-
       let phone = order.customerPhone?.replace(/[^\d]/g, '') || "";
       if (phone.startsWith("0")) phone = "92" + phone.slice(1);
-
       if (phone && (status === "Confirmed" || status === "Cancelled")) {
         const ref = order.orderRef || order.id.slice(0, 8);
         let msg = "";
         if (status === "Confirmed") {
           msg = `Hello ${order.customerName},\nYour order *${ref}* has been confirmed by Lentil Factory. We will process and deliver it shortly!`;
           if (adminNotes) msg += `\n\nNotes from factory: ${adminNotes}`;
-        } else if (status === "Cancelled") {
+        } else {
           msg = `Hello ${order.customerName},\nYour order *${ref}* has been cancelled by Lentil Factory.`;
           if (adminNotes) msg += `\n\nReason: ${adminNotes}`;
         }
-        
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
       }
-
       setSelectedOrderId(null);
       setAdminNotes("");
     } else {
@@ -170,7 +153,7 @@ const OnlineOrders = () => {
 
   const handleDeleteOrder = async () => {
     if (!selectedOrderId) return;
-    if (!confirm("Are you sure you want to permanently delete this order? This action cannot be undone.")) return;
+    if (!confirm("Are you sure you want to permanently delete this order?")) return;
     setUpdating(true);
     const ok = await deleteOrder(selectedOrderId);
     setUpdating(false);
@@ -185,7 +168,6 @@ const OnlineOrders = () => {
   const handleConfirmDelivery = async () => {
     if (!deliveryOrder) return;
 
-    // Validate all items have a price
     const missingPrice = deliveryOrder.items.findIndex(
       (_, idx) => !Number(itemPrices[idx]) || Number(itemPrices[idx]) <= 0
     );
@@ -196,21 +178,31 @@ const OnlineOrders = () => {
 
     setSubmitting(true);
 
-    // Build sale items — match each to best available batch
+    // ── KEY FIX: always fetch fresh inventory from Supabase before matching
+    await fetchBatches();
+
+    // Read fresh batches directly from store state after fetch
+    const freshBatches = useInventoryStore.getState().batches;
+
     const saleItems = deliveryOrder.items.map((item, idx) => {
       const price = Number(itemPrices[idx]);
-      const batch = batches
+      const hasGrade = item.grade && item.grade.trim() !== '';
+      const itemNameToMatch = item.itemName.trim().toLowerCase();
+      const gradeToMatch = item.grade ? item.grade.trim().toLowerCase() : '';
+
+      const batch = freshBatches
         .filter(b =>
-          b.itemName === item.itemName &&
-          b.grade === item.grade &&
+          b.itemName.trim().toLowerCase() === itemNameToMatch &&
+          (!hasGrade || b.grade.trim().toLowerCase() === gradeToMatch) &&
           b.remainingQuantity >= item.quantity
         )
+        // Prefer the batch with most remaining stock for safety
         .sort((a, b) => b.remainingQuantity - a.remainingQuantity)[0];
 
       return {
         batchId: batch?.id ?? "",
         itemName: item.itemName,
-        grade: item.grade,
+        grade: batch?.grade ?? item.grade ?? '',
         quantity: item.quantity,
         salePrice: price,
         subtotal: item.quantity * price,
@@ -219,7 +211,10 @@ const OnlineOrders = () => {
 
     const missing = saleItems.find(i => !i.batchId);
     if (missing) {
-      toast.error(`No stock found for ${missing.itemName} Grade ${missing.grade}. Add inventory first.`);
+      const gradeInfo = missing.grade ? ` Grade ${missing.grade}` : '';
+      toast.error(
+        `Not enough stock for ${missing.itemName}${gradeInfo}. Please add inventory first.`
+      );
       setSubmitting(false);
       return;
     }
@@ -245,6 +240,7 @@ const OnlineOrders = () => {
     setSubmitting(false);
     setDeliveryOpen(false);
     setDeliveryOrderId(null);
+    setItemPrices({});
 
     toast.success(
       outstanding > 0
@@ -253,12 +249,11 @@ const OnlineOrders = () => {
     );
   };
 
-  const pendingCount    = orders.filter(o => o.status === "Pending").length;
+  const pendingCount = orders.filter(o => o.status === "Pending").length;
 
   return (
     <div className="space-y-6">
 
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -275,7 +270,6 @@ const OnlineOrders = () => {
         </Button>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <Input
           placeholder="Search by name or order ID..."
@@ -295,7 +289,6 @@ const OnlineOrders = () => {
         </Select>
       </div>
 
-      {/* Table */}
       {loading ? (
         <div className="flex items-center justify-center h-48 text-muted-foreground gap-2">
           <Loader2 className="h-5 w-5 animate-spin" /><span>Loading orders...</span>
@@ -332,7 +325,9 @@ const OnlineOrders = () => {
                     <TableCell className="text-sm">{o.customerPhone}</TableCell>
                     <TableCell className="max-w-[200px]">
                       <div className="truncate text-sm">
-                        {o.items.map(i => `${i.itemName} ${i.grade}${i.packing && i.packing !== 'Loose' ? ` [${i.packing}]` : ''} (${i.quantity}kg)`).join(", ")}
+                        {o.items.map(i =>
+                          `${i.itemName} ${i.grade}${(i as any).packing && (i as any).packing !== 'Loose' ? ` [${(i as any).packing}]` : ''} (${i.quantity}kg)`
+                        ).join(", ")}
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
@@ -345,10 +340,18 @@ const OnlineOrders = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Button variant="outline" size="sm"
-                        onClick={() => { setSelectedOrderId(o.id); setAdminNotes(o.adminNotes ?? ""); }}>
-                        View
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm"
+                          onClick={() => { setSelectedOrderId(o.id); setAdminNotes(o.adminNotes ?? ""); }}>
+                          View
+                        </Button>
+                        {o.status === "Confirmed" && (
+                          <Button size="sm"
+                            onClick={() => openDeliveryDialog(o.id)}>
+                            <Truck className="h-3 w-3 mr-1" />Deliver
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -368,7 +371,7 @@ const OnlineOrders = () => {
         </div>
       )}
 
-      {/* ── Order Detail Dialog ── */}
+      {/* Order Detail Dialog */}
       <Dialog open={!!selectedOrderId}
         onOpenChange={v => { if (!v) { setSelectedOrderId(null); setAdminNotes(""); } }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
@@ -396,8 +399,10 @@ const OnlineOrders = () => {
                       <div>
                         <span>{item.itemName} </span>
                         <span className="text-muted-foreground text-xs">Grade {item.grade}</span>
-                        {item.packing && item.packing !== "Loose" && (
-                          <Badge variant="outline" className="ml-2 py-0 h-5 text-[10px]">{item.packing}</Badge>
+                        {(item as any).packing && (item as any).packing !== "Loose" && (
+                          <Badge variant="outline" className="ml-2 py-0 h-5 text-[10px]">
+                            {(item as any).packing}
+                          </Badge>
                         )}
                         {cost && (
                           <div className="text-xs font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 rounded px-1.5 py-0.5 mt-0.5 inline-block">
@@ -415,14 +420,11 @@ const OnlineOrders = () => {
                 </div>
               </div>
 
-              {/* Status with cancel reason */}
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Status:</span>
                 <Badge variant={statusVariant(order.status)}>{order.status}</Badge>
                 {order.status === "Cancelled" && (order as any).cancelReason && (
-                  <span className="text-xs text-muted-foreground">
-                    — {(order as any).cancelReason}
-                  </span>
+                  <span className="text-xs text-muted-foreground">— {(order as any).cancelReason}</span>
                 )}
               </div>
 
@@ -435,8 +437,7 @@ const OnlineOrders = () => {
               {order.status === "Pending" && (
                 <div className="flex gap-2">
                   <Button className="flex-1" onClick={() => handleStatusUpdate("Confirmed")} disabled={updating}>
-                    {updating
-                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                    {updating ? <Loader2 className="h-4 w-4 animate-spin" />
                       : <><CheckCircle className="h-4 w-4 mr-1" />Confirm</>}
                   </Button>
                   <Button variant="destructive" className="flex-1"
@@ -447,9 +448,9 @@ const OnlineOrders = () => {
               )}
 
               {order.status === "Confirmed" && (
-                <Button className="w-full" onClick={() => openDeliveryDialog(order.id)}>
-                  <Truck className="h-4 w-4 mr-2" />Mark as Delivered
-                </Button>
+                <p className="text-sm text-center text-amber-600 rounded-md bg-amber-50 dark:bg-amber-950/30 p-2">
+                  Use the <strong>Deliver</strong> button on the table row to process delivery.
+                </p>
               )}
 
               {(order.status === "Delivered" || order.status === "Cancelled") && (
@@ -460,9 +461,7 @@ const OnlineOrders = () => {
 
               {order.status !== "Delivered" && (
                 <div className="pt-4 border-t mt-4 flex flex-col gap-2">
-                  <p className="text-xs text-muted-foreground text-center">
-                    Destructive Action
-                  </p>
+                  <p className="text-xs text-muted-foreground text-center">Destructive Action</p>
                   <Button variant="destructive" onClick={handleDeleteOrder} disabled={updating}>
                     <Trash2 className="h-4 w-4 mr-2" /> Delete Permanently
                   </Button>
@@ -473,15 +472,13 @@ const OnlineOrders = () => {
         </DialogContent>
       </Dialog>
 
-      {/* ── Delivery & Sale Dialog ── */}
+      {/* Delivery & Sale Dialog */}
       <Dialog open={deliveryOpen}
         onOpenChange={v => { if (!v && !submitting) setDeliveryOpen(false); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Confirm Delivery</DialogTitle>
-            <DialogDescription>
-              Set sale price per item. Purchase cost shown as reference.
-            </DialogDescription>
+            <DialogDescription>Set sale price per item. Purchase cost shown as reference.</DialogDescription>
           </DialogHeader>
           {deliveryOrder && (
             <div className="space-y-4">
@@ -499,7 +496,6 @@ const OnlineOrders = () => {
                 </div>
               </div>
 
-              {/* Per-item price input with cost reference */}
               <div className="border rounded-lg divide-y">
                 {deliveryOrder.items.map((item, idx) => {
                   const cost = getPurchasePrice(item.itemName, item.grade);
@@ -510,18 +506,16 @@ const OnlineOrders = () => {
                           <p className="text-sm font-medium">{item.itemName}</p>
                           <p className="text-xs text-muted-foreground">
                             Grade {item.grade} — {item.quantity} kg
-                            {item.packing && item.packing !== "Loose" && ` (${item.packing})`}
+                            {(item as any).packing && (item as any).packing !== "Loose"
+                              && ` (${(item as any).packing})`}
                           </p>
-                          {cost && (
+                          {cost ? (
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              Purchase cost: <span className="font-medium text-foreground">
-                                {formatPKR(cost)}/kg
-                              </span>
+                              Purchase cost: <span className="font-medium text-foreground">{formatPKR(cost)}/kg</span>
                             </p>
-                          )}
-                          {!cost && (
+                          ) : (
                             <p className="text-xs text-orange-500 mt-0.5">
-                              No inventory found for this item
+                              ⚠ No inventory found for this item+grade
                             </p>
                           )}
                         </div>
@@ -538,14 +532,13 @@ const OnlineOrders = () => {
                       {Number(itemPrices[idx]) > 0 && (
                         <div className="text-xs text-right text-muted-foreground">
                           Subtotal: {formatPKR(item.quantity * Number(itemPrices[idx]))}
-                          {cost && Number(itemPrices[idx]) > 0 && (
+                          {cost && (
                             <span className={`ml-2 font-medium ${
                               Number(itemPrices[idx]) > cost ? "text-green-600" : "text-red-500"
                             }`}>
                               {Number(itemPrices[idx]) > cost
                                 ? `+${formatPKR((Number(itemPrices[idx]) - cost) * item.quantity)} profit`
-                                : `${formatPKR((cost - Number(itemPrices[idx])) * item.quantity)} loss`
-                              }
+                                : `-${formatPKR((cost - Number(itemPrices[idx])) * item.quantity)} loss`}
                             </span>
                           )}
                         </div>
@@ -555,7 +548,6 @@ const OnlineOrders = () => {
                 })}
               </div>
 
-              {/* Payment summary */}
               {totalAmount > 0 && (
                 <div className="rounded-lg border p-3 text-sm space-y-2">
                   <div className="flex justify-between">
@@ -591,8 +583,7 @@ const OnlineOrders = () => {
                   disabled={submitting || totalAmount <= 0}>
                   {submitting
                     ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
-                    : <><CheckCircle className="h-4 w-4 mr-2" />Confirm Delivery</>
-                  }
+                    : <><CheckCircle className="h-4 w-4 mr-2" />Confirm Delivery</>}
                 </Button>
               </div>
             </div>

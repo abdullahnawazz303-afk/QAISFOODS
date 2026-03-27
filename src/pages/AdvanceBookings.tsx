@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useBookingStore } from "@/stores/bookingStore";
 import { useVendorStore } from "@/stores/vendorStore";
-import { useCashFlowStore } from "@/stores/cashFlowStore";
+import { supabase } from "@/integrations/supabase/client";
 import { EmptyState } from "@/components/EmptyState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,6 @@ import { toast } from "sonner";
 import { formatPKR, formatKG, formatDate, getTodayISO } from "@/lib/formatters";
 import type { BookingItem, Grade, BookingStatus } from "@/types";
 
-const ITEM_OPTIONS = ["دال ماش", "دال چنا", "دال مونگ", "چاول", "چنے", "دال مسور", "ماش کی دال"];
 const GRADE_OPTIONS: Grade[] = ['A+', 'A', 'B', 'C'];
 
 const statusColor = (s: BookingStatus) => {
@@ -32,8 +31,7 @@ const statusColor = (s: BookingStatus) => {
 
 const AdvanceBookings = () => {
   const { bookings, addBooking, addPayment, updateStatus, markDelivered, fetchBookings } = useBookingStore();
-  const { vendors, fetchVendors, addLedgerEntry } = useVendorStore();
-  const { addEntry: addCashEntry } = useCashFlowStore();
+  const { vendors, fetchVendors } = useVendorStore();
 
   const [open, setOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -42,6 +40,10 @@ const AdvanceBookings = () => {
   const [page, setPage] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [bookingPaymentMethod, setBookingPaymentMethod] = useState("Cash");
+  const [bookingReference, setBookingReference] = useState("");
+  const [payMethod, setPayMethod] = useState("Cash");
+  const [payReference, setPayReference] = useState("");
   const pageSize = 10;
 
   const [items, setItems] = useState<BookingItem[]>([]);
@@ -49,11 +51,20 @@ const AdvanceBookings = () => {
   const [itemGrade, setItemGrade] = useState<Grade>("A");
   const [itemQty, setItemQty] = useState("");
   const [itemPrice, setItemPrice] = useState("");
+  const [itemNameOptions, setItemNameOptions] = useState<string[]>([]);
 
-  // Fetch on mount
   useEffect(() => {
     fetchBookings();
     fetchVendors();
+    // Fetch shared item list from item_names table (same as Inventory > Manage Items)
+    supabase
+      .from('item_names')
+      .select('name')
+      .eq('is_active', true)
+      .order('name')
+      .then(({ data }) => {
+        if (data) setItemNameOptions(data.map((r: any) => r.name));
+      });
   }, []);
 
   const getVendorName = (id: string) =>
@@ -92,37 +103,13 @@ const AdvanceBookings = () => {
       expectedDeliveryDate: fd.get("expectedDeliveryDate") as string,
       items,
       advancePaid,
+      paymentMethod: bookingPaymentMethod,
+      referenceNumber: (bookingPaymentMethod === 'Bank Transfer' || bookingPaymentMethod === 'Cheque') ? bookingReference : undefined,
       status: advancePaid >= totalValue ? 'Fully Paid' : advancePaid > 0 ? 'Partially Paid' : 'Booked',
       notes: fd.get("notes") as string || "",
     });
 
     if (bookingId) {
-      // Post purchase liability to vendor ledger
-      await addLedgerEntry(vendorId, {
-        date: getTodayISO(),
-        type: "Purchase",
-        description: `Advance booking — total value`,
-        debit: 0,
-        credit: totalValue,
-      });
-
-      // Post advance payment if any
-      if (advancePaid > 0) {
-        await addLedgerEntry(vendorId, {
-          date: getTodayISO(),
-          type: "Payment Made",
-          description: `Advance payment for booking`,
-          debit: advancePaid,
-          credit: 0,
-        });
-        await addCashEntry(getTodayISO(), {
-          type: 'out',
-          category: 'Vendor Payment',
-          amount: advancePaid,
-          description: `Advance booking payment`,
-        });
-      }
-
       setItems([]);
       setOpen(false);
       toast.success("Advance booking created");
@@ -163,22 +150,7 @@ const AdvanceBookings = () => {
 
     setSubmitting(true);
 
-    await addPayment(detailId, amount, fd.get("notes") as string || "");
-
-    await addLedgerEntry(booking.vendorId, {
-      date: getTodayISO(),
-      type: "Payment Made",
-      description: `Payment for booking`,
-      debit: amount,
-      credit: 0,
-    });
-
-    await addCashEntry(getTodayISO(), {
-      type: 'out',
-      category: 'Vendor Payment',
-      amount,
-      description: `Booking payment`,
-    });
+    await addPayment(detailId, amount, fd.get("notes") as string || "", payMethod);
 
     setSubmitting(false);
     setPayOpen(false);
@@ -196,34 +168,70 @@ const AdvanceBookings = () => {
     const ok = await useBookingStore.getState().deleteBooking(booking.id);
     
     if (ok) {
-        // Reverse Ledger purchase liability
-        await addLedgerEntry(booking.vendorId, {
-          date: getTodayISO(),
-          type: "Adjustment",
-          description: `Reversal of deleted booking`,
-          debit: booking.totalValue, // reverse the liability
-          credit: 0,
+      // ── Reverse the purchase liability in vendor_ledger
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: lastRow } = await supabase
+        .from('vendor_ledger')
+        .select('running_balance')
+        .eq('vendor_id', booking.vendorId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const lastBalance = lastRow?.running_balance ?? 0;
+
+      // Reverse total liability (debit = reduces what we owe)
+      await supabase.from('vendor_ledger').insert({
+        vendor_id: booking.vendorId,
+        entry_date: getTodayISO(),
+        transaction_type: 'Adjustment',
+        description: `Reversal — deleted Booking ${booking.bookingRef || booking.id.slice(0,8)} (liability removed)`,
+        debit: booking.totalValue,
+        credit: 0,
+        running_balance: lastBalance - booking.totalValue,
+      });
+
+      // If advance was already paid, credit it back (vendor owes us refund)
+      if (booking.advancePaid > 0) {
+        const { data: lastRow2 } = await supabase
+          .from('vendor_ledger')
+          .select('running_balance')
+          .eq('vendor_id', booking.vendorId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const bal2 = lastRow2?.running_balance ?? 0;
+
+        await supabase.from('vendor_ledger').insert({
+          vendor_id: booking.vendorId,
+          entry_date: getTodayISO(),
+          transaction_type: 'Adjustment',
+          description: `Refund of advance for deleted Booking ${booking.bookingRef || booking.id.slice(0,8)}`,
+          debit: 0,
+          credit: booking.advancePaid,
+          running_balance: bal2 + booking.advancePaid,
         });
 
-        // Reverse Payments if any were made
-        if (booking.advancePaid > 0) {
-            await addLedgerEntry(booking.vendorId, {
-              date: getTodayISO(),
-              type: "Adjustment",
-              description: `Refund for deleted booking advance`,
-              debit: 0,
-              credit: booking.advancePaid,
-            });
-            await addCashEntry(getTodayISO(), {
-              type: 'in',
-              category: 'Other Income',
-              amount: booking.advancePaid,
-              description: `Refund for deleted booking advance`,
-            });
+        // Cash refund in (only if today's cash day is open)
+        const today = getTodayISO();
+        const { data: todayDay } = await supabase
+          .from('cash_days')
+          .select('id, is_closed')
+          .eq('business_date', today)
+          .maybeSingle();
+        if (todayDay && !todayDay.is_closed) {
+          await supabase.from('cash_entries').insert({
+            cash_day_id: todayDay.id,
+            entry_type: 'in',
+            category: 'Other Income',
+            amount: booking.advancePaid,
+            description: `Advance refund for deleted Booking ${booking.bookingRef || booking.id.slice(0,8)}`,
+          });
         }
-        toast.success("Booking deleted and ledger reversed");
+      }
+
+      toast.success("Booking deleted and ledger reversed");
     } else {
-        toast.error("Failed to delete booking");
+      toast.error("Failed to delete booking");
     }
     setDeletingId(null);
   };
@@ -299,7 +307,7 @@ const paged = sorted.slice(page * pageSize, (page + 1) * pageSize);
                   <Select value={itemName} onValueChange={setItemName}>
                     <SelectTrigger><SelectValue placeholder="Item" /></SelectTrigger>
                     <SelectContent>
-                      {ITEM_OPTIONS.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
+                  {itemNameOptions.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={itemGrade} onValueChange={(v) => setItemGrade(v as Grade)}>
@@ -318,12 +326,38 @@ const paged = sorted.slice(page * pageSize, (page + 1) * pageSize);
                   </div>
                 )}
               </div>
-
-              <div className="space-y-2">
-                <Label>Advance Paid (PKR)</Label>
-                <Input name="advancePaid" type="number" defaultValue="0" required />
-                <p className="text-xs text-muted-foreground">Enter 0 if no advance paid yet.</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Advance Paid (PKR)</Label>
+                  <Input name="advancePaid" type="number" defaultValue="0" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Method</Label>
+                  <Select value={bookingPaymentMethod} onValueChange={setBookingPaymentMethod}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cash">Cash</SelectItem>
+                      <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="Cheque">Cheque</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+
+              {(bookingPaymentMethod === 'Bank Transfer' || bookingPaymentMethod === 'Cheque') && (
+                <div className="space-y-2">
+                  <Label>{bookingPaymentMethod === 'Cheque' ? 'Cheque Number' : 'Transfer ID'} *</Label>
+                  <Input
+                    value={bookingReference}
+                    onChange={(e) => setBookingReference(e.target.value)}
+                    placeholder={`Enter ${bookingPaymentMethod.toLowerCase()} reference`}
+                    required
+                  />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">Enter 0 if no advance paid yet.</p>
               <div className="space-y-2"><Label>Notes</Label><Textarea name="notes" /></div>
               <Button type="submit" className="w-full" disabled={submitting}>
                 {submitting ? "Saving..." : "Create Booking"}
@@ -487,15 +521,42 @@ const paged = sorted.slice(page * pageSize, (page + 1) * pageSize);
                 </div>
               </div>
               <form onSubmit={handlePayment} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Payment Amount (PKR)</Label>
-                  <Input
-                    name="amount" type="number" min="1"
-                    max={detailBooking.remainingBalance}
-                    required autoFocus
-                    placeholder={`Max: ${formatPKR(detailBooking.remainingBalance)}`}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Payment Amount (PKR)</Label>
+                    <Input
+                      name="amount" type="number" min="1"
+                      max={detailBooking.remainingBalance}
+                      required autoFocus
+                      placeholder={`Max: ${formatPKR(detailBooking.remainingBalance)}`}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Method</Label>
+                    <Select value={payMethod} onValueChange={setPayMethod}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Cash">Cash</SelectItem>
+                        <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                        <SelectItem value="Cheque">Cheque</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+
+                {(payMethod === 'Bank Transfer' || payMethod === 'Cheque') && (
+                  <div className="space-y-2">
+                    <Label>{payMethod === 'Cheque' ? 'Cheque Number' : 'Transfer ID'} *</Label>
+                    <Input
+                      value={payReference}
+                      onChange={(e) => setPayReference(e.target.value)}
+                      placeholder={`Enter ${payMethod.toLowerCase()} reference`}
+                      required
+                    />
+                  </div>
+                )}
                 <div className="space-y-2"><Label>Notes</Label><Input name="notes" /></div>
                 <div className="flex gap-2">
                   <Button type="button" variant="outline" className="flex-1" onClick={() => setPayOpen(false)}>Cancel</Button>

@@ -9,9 +9,10 @@ interface SalesState {
   error: string | null;
 
   fetchSales: () => Promise<void>;
-  addSale: (s: Omit<Sale, 'id' | 'outstanding' | 'paymentStatus'>) => Promise<string | null>;
-  addPayment: (saleId: string, amount: number) => Promise<Sale | null>;
+  addSale: (s: Omit<Sale, 'id' | 'outstanding' | 'paymentStatus'> & { paymentMethod?: string; referenceNumber?: string }) => Promise<string | null>;
+  addPayment: (saleId: string, amount: number, method?: string, notes?: string, referenceNumber?: string) => Promise<Sale | null>;
   deleteSale: (saleId: string) => Promise<{ success: boolean; error?: string }>;
+  updateSaleMetadata: (saleId: string, updates: { date?: string; notes?: string; totalAmount?: number }) => Promise<{ success: boolean; error?: string }>;
 }
 
 // ── Helper: get or create today's cash day and return its id
@@ -144,6 +145,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
         total_amount: s.totalAmount,
         amount_paid: s.amountPaid,
         payment_status: paymentStatus,
+        online_order_id: s.onlineOrderId ?? null,
         notes: s.notes ?? null,
       })
       .select('id, sale_ref')
@@ -235,19 +237,39 @@ export const useSalesStore = create<SalesState>((set, get) => ({
       });
     }
 
-    // ── Step 4: Record cash-in if payment was made today
+    // ── Step 4: Record cash-in or cheque if payment was made today
     if (s.amountPaid > 0) {
-      const cashDayId = await getOpenCashDayId();
-      if (cashDayId) {
-        await supabase.from('cash_entries').insert({
-          cash_day_id: cashDayId,
-          entry_type: 'in',
-          category: 'Sale Revenue',
+      const method = s.paymentMethod || 'Cash';
+      const isBankOrCheque = method === 'Bank Transfer' || method === 'Cheque';
+
+      if (isBankOrCheque) {
+        const chequeNumber = s.referenceNumber || `BTC-${Date.now().toString().slice(-6)}`;
+        await supabase.from('cheques').insert({
+          cheque_number: chequeNumber,
+          customer_id: s.customerId,
           amount: s.amountPaid,
-          description: `Sale ${saleRow.sale_ref} — ${s.notes || 'Cash payment'}`,
+          issue_date: s.date,
+          expected_clearance_date: s.date,
+          bank_name: method === 'Bank Transfer' ? 'Bank Transfer' : 'Customer Cheque',
+          status: 'Cleared',
+          notes: `Upfront payment with sale — ${s.notes || ''}`,
+          reference_id: saleRow.id,
+          reference_type: 'SALE'
         });
+      } else {
+        const cashDayId = await getOpenCashDayId();
+        if (cashDayId) {
+          await supabase.from('cash_entries').insert({
+            cash_day_id: cashDayId,
+            entry_type: 'in',
+            category: 'Sale Revenue',
+            amount: s.amountPaid,
+            description: `Sale ${saleRow.sale_ref} — ${s.notes || 'Cash payment'}`,
+            reference_id: saleRow.id,
+            reference_type: 'SALE'
+          });
+        }
       }
-      // If cashDayId is null, the day is closed — cash entry skipped intentionally
     }
 
     await get().fetchSales();
@@ -255,7 +277,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
   },
 
   // ── Record a payment against an existing sale
-  addPayment: async (saleId, amount) => {
+  addPayment: async (saleId, amount, method = 'Cash', notes = '', referenceNumber) => {
     const sale = get().sales.find((s) => s.id === saleId);
     if (!sale) return null;
 
@@ -295,16 +317,36 @@ export const useSalesStore = create<SalesState>((set, get) => ({
       reference_id: saleId,
     });
 
-    // ── Add to cash flow
-    const cashDayId = await getOpenCashDayId();
-    if (cashDayId) {
-      await supabase.from('cash_entries').insert({
-        cash_day_id: cashDayId,
-        entry_type: 'in',
-        category: 'Customer Payment',
+    // ── Route to cash flow or cheques based on method
+    const isBankOrCheque = method === 'Bank Transfer' || method === 'Cheque';
+
+    if (isBankOrCheque) {
+      const chequeNumber = referenceNumber || `BTC-${Date.now().toString().slice(-6)}`;
+      await supabase.from('cheques').insert({
+        cheque_number: chequeNumber,
+        customer_id: sale.customerId,
         amount: amount,
-        description: `Payment from customer — Sale ${saleId}`,
+        issue_date: new Date().toISOString().split('T')[0],
+        expected_clearance_date: new Date().toISOString().split('T')[0],
+        bank_name: method === 'Bank Transfer' ? 'Bank Transfer' : 'Customer Cheque',
+        status: 'Cleared',
+        notes: `Customer payment for sale — ${notes}`,
+        reference_id: saleId,
+        reference_type: 'SALE'
       });
+    } else {
+      const cashDayId = await getOpenCashDayId();
+      if (cashDayId) {
+        await supabase.from('cash_entries').insert({
+          cash_day_id: cashDayId,
+          entry_type: 'in',
+          category: 'Customer Payment',
+          amount: amount,
+          description: `Payment from customer — Sale ${saleId}`,
+          reference_id: saleId,
+          reference_type: 'SALE'
+        });
+      }
     }
 
     // ── Update local state immediately (no full re-fetch needed)
@@ -323,67 +365,201 @@ export const useSalesStore = create<SalesState>((set, get) => ({
   },
 
   // ── Admin: Delete Sale
-  // Deletes the sale, restores inventory, and inserts a reversing ledger entry to maintain balance continuity.
+  // Deletes the sale, restores inventory, inserts a reversal ledger entry.
+  // The DB check constraint "remaining_not_exceed" MUST be dropped first via schema_update.sql
   deleteSale: async (saleId) => {
     set({ loading: true });
     
-    // Prevent orphaned FKs: fetch sale to get items, customer, etc.
-    const { data: sale } = await supabase.from('sales').select('*, sale_items(*)').eq('id', saleId).maybeSingle();
-    if (!sale) {
-      set({ loading: false });
-      return { success: false, error: 'Sale not found' };
-    }
-
-    // 1. Restore inventory
-    for (const item of sale.sale_items) {
-      const { data: batch } = await supabase.from('inventory_batches').select('remaining_qty_kg').eq('id', item.batch_id).maybeSingle();
-      if (batch) {
-        await supabase.from('inventory_batches').update({ remaining_qty_kg: batch.remaining_qty_kg + item.quantity_kg }).eq('id', item.batch_id);
-        await supabase.from('inventory_movements').insert({
-          batch_id: item.batch_id,
-          movement_type: 'IN',
-          quantity_kg: item.quantity_kg,
-          reference_type: 'MANUAL',
-          notes: `Reversed from deleted Sale ${sale.sale_ref}`
-        });
+    try {
+      const { data: sale } = await supabase
+        .from('sales')
+        .select('*, online_order_id, sale_items(*)')
+        .eq('id', saleId)
+        .maybeSingle();
+      if (!sale) {
+        set({ loading: false });
+        if (!get().sales.some(s => s.id === saleId)) return { success: true }; 
+        return { success: false, error: 'Sale record not found in database' };
       }
-    }
 
-    // 2. Customer Ledger Reversal
-    const prevBalance = await getLastCustomerBalance(sale.customer_id);
-    const netImpact = sale.total_amount - sale.amount_paid; // net debit from sale
-    if (netImpact > 0) {
-      await supabase.from('customer_ledger').insert({
-        customer_id: sale.customer_id,
-        entry_date: new Date().toISOString().split('T')[0],
-        transaction_type: 'Adjustment',
-        description: `Reversal of deleted Sale ${sale.sale_ref}`,
-        debit: 0,
-        credit: netImpact,
-        running_balance: prevBalance - netImpact,
-        reference_type: 'SALE'
-      });
-    }
-
-    // 3. Cash Flow Reversal
-    if (sale.amount_paid > 0) {
-      const cashDayId = await getOpenCashDayId();
-      if (cashDayId) {
-         await supabase.from('cash_entries').insert({
-           cash_day_id: cashDayId,
-           entry_type: 'out',
-           category: 'Refund',
-           amount: sale.amount_paid,
-           description: `Refund for deleted Sale ${sale.sale_ref}`
-         });
+      // Guard: Block deletion if the sale is linked to a Delivered online order
+      if (sale.online_order_id) {
+        const { data: linkedOrder } = await supabase
+          .from('online_orders')
+          .select('status')
+          .eq('id', sale.online_order_id)
+          .maybeSingle();
+        if (linkedOrder?.status === 'Delivered') {
+          set({ loading: false });
+          return { success: false, error: 'Cannot delete a sale linked to a Delivered online order. Cancel the order first.' };
+        }
       }
-    }
 
-    // 4. Delete the sale record (cascades to sale_items)
-    const { error } = await supabase.from('sales').delete().eq('id', saleId);
-    
-    await get().fetchSales();
-    if (error) return { success: false, error: error.message };
-    return { success: true };
+      // 1. Inventory restoration is handled automatically by the DB trigger on sale_items deletion.
+      // We skip manual restoration here to avoid the "double-restore" bug (+200kg instead of +100kg).
+
+
+      // 2. Customer Ledger Reversal (Atomic Check)
+      const { data: priorReversal } = await supabase.from('customer_ledger')
+        .select('id').eq('reference_id', saleId).eq('transaction_type', 'Adjustment').maybeSingle();
+
+      if (!priorReversal) {
+        const prevBalance = await getLastCustomerBalance(sale.customer_id);
+        const netImpact = sale.total_amount - (sale.amount_paid || 0);
+        if (netImpact > 0) {
+          await supabase.from('customer_ledger').insert({
+            customer_id: sale.customer_id,
+            entry_date: new Date().toISOString().split('T')[0],
+            transaction_type: 'Adjustment',
+            description: `Reversal of deleted Sale ${sale.sale_ref}`,
+            debit: 0, credit: netImpact,
+            running_balance: prevBalance - netImpact,
+            reference_type: 'SALE', reference_id: saleId
+          });
+        }
+
+        if (sale.amount_paid > 0) {
+          // Clean up any non-cash (Bank/Cheque) payments associated with this sale
+          await supabase.from('cheques')
+            .delete()
+            .eq('reference_id', saleId)
+            .eq('reference_type', 'SALE');
+
+          // Sum only the actual Cash payments to ensure precise refunds
+          const { data: cashEntries } = await supabase.from('cash_entries')
+            .select('amount')
+            .eq('reference_id', saleId)
+            .eq('reference_type', 'SALE')
+            .eq('entry_type', 'in');
+
+          const totalCashPaid = (cashEntries || []).reduce((sum, e) => sum + e.amount, 0);
+
+          if (totalCashPaid > 0) {
+            const { data: priorCash } = await supabase.from('cash_entries')
+              .select('id').eq('reference_id', saleId).eq('category', 'Refund').maybeSingle();
+            if (!priorCash) {
+              const cashDayId = await getOpenCashDayId();
+              if (cashDayId) {
+                await supabase.from('cash_entries').insert({
+                  cash_day_id: cashDayId, entry_type: 'out', category: 'Refund',
+                  amount: totalCashPaid,
+                  description: `Refund Cash for deleted Sale ${sale.sale_ref}`,
+                  reference_id: saleId, reference_type: 'SALE'
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // 3. Detach FK references so parent row can be deleted
+      await supabase.from('customer_ledger').update({ reference_id: null }).eq('reference_id', saleId);
+      await supabase.from('cash_entries').update({ reference_id: null }).eq('reference_id', saleId);
+      await supabase.from('inventory_movements').update({ reference_id: null }).eq('reference_id', saleId);
+
+      // 4. Update online order status if applicable
+      if (sale.online_order_id) {
+        await supabase
+          .from('online_orders')
+          .update({ 
+             status: 'Cancelled',
+             admin_notes: `Order reverted: Sale ${sale.sale_ref} was deleted`
+          })
+          .eq('id', sale.online_order_id);
+      }
+
+      // 5. Final Sale Deletion
+      await supabase.from('sale_items').delete().eq('sale_id', saleId);
+      const { error: delErr } = await supabase.from('sales').delete().eq('id', saleId);
+      
+      if (delErr) throw delErr;
+
+      await get().fetchSales();
+      return { success: true };
+
+    } catch (err: any) {
+      console.error('Sale Deletion Failure:', err.message);
+      set({ error: err.message, loading: false });
+      await get().fetchSales(); 
+      return { success: false, error: err.message };
+    }
+  },
+
+  // ── Admin: Edit Sale — supports editing date, notes, AND total amount
+  // If total_amount changes, the difference is reflected in the customer ledger automatically.
+  updateSaleMetadata: async (saleId, updates) => {
+    try {
+      const payload: Record<string, any> = {};
+      if (updates.date !== undefined) payload.sale_date = updates.date;
+      if (updates.notes !== undefined) payload.notes = updates.notes;
+
+      // Handle total amount change
+      if (updates.totalAmount !== undefined) {
+        const { data: currentSale } = await supabase
+          .from('sales')
+          .select('total_amount, amount_paid, customer_id, sale_ref')
+          .eq('id', saleId)
+          .maybeSingle();
+
+        if (!currentSale) return { success: false, error: 'Sale not found' };
+
+        const newTotal = updates.totalAmount;
+        const oldTotal = currentSale.total_amount;
+        const amountPaid = currentSale.amount_paid || 0;
+
+        // Guard: total cannot be less than what the customer already paid
+        if (newTotal < amountPaid) {
+          return { success: false, error: `Cannot set total below amount already paid (PKR ${amountPaid.toLocaleString()})` };
+        }
+
+        payload.total_amount = newTotal;
+        const newOutstanding = newTotal - amountPaid;
+        payload.outstanding = newOutstanding;
+        payload.payment_status = newOutstanding <= 0 ? 'Paid' : amountPaid > 0 ? 'Partially Paid' : 'Unpaid';
+
+        // Post a ledger correction entry for the difference
+        const diff = newTotal - oldTotal; // positive = increase, negative = discount/correction
+        if (diff !== 0) {
+          const prevBalance = await getLastCustomerBalance(currentSale.customer_id);
+          await supabase.from('customer_ledger').insert({
+            customer_id: currentSale.customer_id,
+            entry_date: new Date().toISOString().split('T')[0],
+            transaction_type: 'Adjustment',
+            description: diff < 0
+              ? `Correction: Sale ${currentSale.sale_ref} reduced by PKR ${Math.abs(diff).toLocaleString()}`
+              : `Correction: Sale ${currentSale.sale_ref} increased by PKR ${diff.toLocaleString()}`,
+            debit: diff > 0 ? diff : 0,
+            credit: diff < 0 ? Math.abs(diff) : 0,
+            running_balance: prevBalance + diff,
+            reference_type: 'SALE',
+            reference_id: saleId
+          });
+        }
+      }
+
+      const { error } = await supabase.from('sales').update(payload).eq('id', saleId);
+      if (error) return { success: false, error: error.message };
+
+      // Update local state
+      set((s) => ({
+        sales: s.sales.map(sale => {
+          if (sale.id !== saleId) return sale;
+          const newTotal = updates.totalAmount ?? sale.totalAmount;
+          const newOutstanding = Math.max(0, newTotal - (sale.amountPaid || 0));
+          return {
+            ...sale,
+            date: updates.date ?? sale.date,
+            notes: updates.notes ?? sale.notes,
+            totalAmount: newTotal,
+            outstanding: newOutstanding,
+            paymentStatus: newOutstanding <= 0 ? 'Paid' : (sale.amountPaid || 0) > 0 ? 'Partially Paid' : 'Unpaid',
+          };
+        })
+      }));
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
   },
 }));

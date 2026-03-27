@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog, DialogContent, DialogHeader,
+  Dialog, DialogContent, DialogDescription, DialogHeader,
   DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -19,11 +19,14 @@ import {
   SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, CreditCard, Loader2 } from "lucide-react";
+import { Plus, Trash2, Loader2, CreditCard, Settings2,
+  CheckCircle, XCircle, Edit3,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { formatPKR, formatKG, formatDate, getTodayISO } from "@/lib/formatters";
 import type { SaleItem } from "@/types";
+import type { Sale } from "@/types"; // Added for editingSale type
 
 const Sales = () => {
   const { sales, addSale, addPayment, deleteSale, fetchSales, loading } = useSalesStore();
@@ -37,17 +40,32 @@ const Sales = () => {
   const [currentBatch, setCurrentBatch] = useState("");
   const [currentQty, setCurrentQty]     = useState("");
   const [currentPrice, setCurrentPrice] = useState("");
+  const [isCredit, setIsCredit]                 = useState(false);
+  const [paymentTermsDays, setPaymentTermsDays] = useState("30");
+  const [amountPaidUpfront, setAmountPaidUpfront] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState("");
   const [saleDate, setSaleDate]   = useState(getTodayISO());
   const [amountPaid, setAmountPaid] = useState("0");
   const [notes, setNotes]         = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("Cash");
+  const [referenceNumber, setReferenceNumber] = useState("");
 
   // ── Payment dialog state
   const [payOpen, setPayOpen]         = useState(false);
   const [payingSale, setPayingSale]   = useState<{ id: string; outstanding: number; customerName: string } | null>(null);
   const [payAmount, setPayAmount]     = useState("");
+  const [payMethod, setPayMethod]     = useState("Cash");
+  const [payReference, setPayReference] = useState("");
   const [paying, setPaying]           = useState(false);
   const [deletingSaleId, setDeletingSaleId] = useState<string | null>(null);
+
+  // ── Edit dialog state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [editDate, setEditDate] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [editTotalAmount, setEditTotalAmount] = useState("");
+  const [editSubmitting, setEditSubmitting] = useState(false);
 
   // ── Table filters
   const [search, setSearch] = useState("");
@@ -143,6 +161,8 @@ const Sales = () => {
       items: saleItems,
       totalAmount: totalSaleAmount,
       amountPaid: paid,
+      paymentMethod,
+      referenceNumber: (paymentMethod === 'Bank Transfer' || paymentMethod === 'Cheque') ? referenceNumber : undefined,
       notes,
     });
 
@@ -166,6 +186,8 @@ const Sales = () => {
       customerName: sale.customerName ?? "",
     });
     setPayAmount(String(sale.outstanding));
+    setPayMethod("Cash");
+    setPayReference("");
     setPayOpen(true);
   };
 
@@ -182,7 +204,7 @@ const Sales = () => {
     }
 
     setPaying(true);
-    const result = await addPayment(payingSale.id, amount);
+    const result = await addPayment(payingSale.id, amount, payMethod, undefined, payReference);
     setPaying(false);
 
     if (result) {
@@ -198,12 +220,61 @@ const Sales = () => {
   const handleDelete = async (saleId: string) => {
     if (!confirm("Are you sure you want to delete this sale? This will automatically reverse inventory and adjust the customer's ledger.")) return;
     setDeletingSaleId(saleId);
-    const { success, error } = await deleteSale(saleId);
-    setDeletingSaleId(null);
-    if (success) {
-      toast.success("Sale deleted and ledgers reversed successfully");
+
+    const promise = deleteSale(saleId);
+
+    toast.promise(promise, {
+      loading: "Deleting sale and reversing inventory...",
+      success: (res) => {
+        setDeletingSaleId(null);
+        if (res.success) return "Sale deleted successfully";
+        throw new Error(res.error || "Failed to delete sale");
+      },
+      error: (err) => {
+        setDeletingSaleId(null);
+        return err.message;
+      },
+    });
+  };
+
+  // ── Edit Sale Logic
+  const openEditDialog = (sale: Sale) => {
+    setEditingSale(sale);
+    setEditDate(sale.date);
+    setEditNotes(sale.notes ?? "");
+    setEditTotalAmount(String(sale.totalAmount));
+    setEditOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSale) return;
+
+    const newTotal = Number(editTotalAmount);
+
+    // ── Validation guards
+    if (!editTotalAmount || isNaN(newTotal) || newTotal <= 0) {
+      toast.error("Total amount must be a positive number");
+      return;
+    }
+    if (newTotal < editingSale.amountPaid) {
+      toast.error(`Total cannot be less than what is already paid (${formatPKR(editingSale.amountPaid)})`);
+      return;
+    }
+
+    setEditSubmitting(true);
+    const result = await useSalesStore.getState().updateSaleMetadata(editingSale.id, {
+      date: editDate,
+      notes: editNotes,
+      totalAmount: newTotal !== editingSale.totalAmount ? newTotal : undefined,
+    });
+    setEditSubmitting(false);
+
+    if (result.success) {
+      toast.success("Sale updated successfully");
+      setEditOpen(false);
     } else {
-      toast.error(error || "Failed to delete sale");
+      toast.error(result.error || "Failed to update sale");
     }
   };
 
@@ -239,6 +310,7 @@ const Sales = () => {
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Record New Sale</DialogTitle>
+              <DialogDescription>Add items to create a new customer sale.</DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -339,23 +411,51 @@ const Sales = () => {
                 )}
               </div>
 
-              {/* Payment */}
-              <div className="space-y-2">
-                <Label>Amount Paid Now (PKR)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={totalSaleAmount}
-                  value={amountPaid}
-                  onChange={(e) => setAmountPaid(e.target.value)}
-                />
-                {totalSaleAmount > 0 && Number(amountPaid) < totalSaleAmount && (
-                  <p className="text-xs text-amber-600">
-                    Outstanding after this sale:{" "}
-                    {formatPKR(totalSaleAmount - Number(amountPaid))}
-                  </p>
-                )}
+              {/* Payment & Method */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Amount Paid Now (PKR)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={totalSaleAmount}
+                    value={amountPaid}
+                    onChange={(e) => setAmountPaid(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Method</Label>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cash">Cash</SelectItem>
+                      <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="Cheque">Cheque</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+
+              {(paymentMethod === 'Bank Transfer' || paymentMethod === 'Cheque') && (
+                <div className="space-y-2">
+                  <Label>{paymentMethod === 'Cheque' ? 'Cheque Number' : 'Transfer ID'} *</Label>
+                  <Input
+                    value={referenceNumber}
+                    onChange={(e) => setReferenceNumber(e.target.value)}
+                    placeholder={`Enter ${paymentMethod.toLowerCase()} reference`}
+                    required
+                  />
+                </div>
+              )}
+
+              {totalSaleAmount > 0 && Number(amountPaid) < totalSaleAmount && (
+                <p className="text-xs text-amber-600">
+                  Outstanding after this sale:{" "}
+                  {formatPKR(totalSaleAmount - Number(amountPaid))}
+                </p>
+              )}
 
               {/* Notes */}
               <div className="space-y-2">
@@ -460,8 +560,17 @@ const Sales = () => {
                         )}
                         <Button
                           size="sm"
+                          variant="outline"
+                          onClick={() => openEditDialog(s)}
+                          className="h-8 w-8 p-0"
+                          title="Edit Sale Details"
+                        >
+                          <Edit3 className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="ghost"
-                          className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
+                          className="text-destructive hover:text-destructive/90 hover:bg-destructive/10 h-8 w-8 p-0"
                           onClick={() => handleDelete(s.id)}
                           disabled={deletingSaleId === s.id}
                         >
@@ -513,6 +622,7 @@ const Sales = () => {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Record Payment</DialogTitle>
+            <DialogDescription>Apply a payment to this sale to reduce the outstanding balance.</DialogDescription>
           </DialogHeader>
 
           {payingSale && (
@@ -530,21 +640,48 @@ const Sales = () => {
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label>Payment Amount (PKR) *</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={payingSale.outstanding}
-                  value={payAmount}
-                  onChange={(e) => setPayAmount(e.target.value)}
-                  autoFocus
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  Max: {formatPKR(payingSale.outstanding)}
-                </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Amount (PKR) *</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={payingSale.outstanding}
+                    value={payAmount}
+                    onChange={(e) => setPayAmount(e.target.value)}
+                    autoFocus
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Method</Label>
+                  <Select value={payMethod} onValueChange={setPayMethod}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cash">Cash</SelectItem>
+                      <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="Cheque">Cheque</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+
+              {(payMethod === 'Bank Transfer' || payMethod === 'Cheque') && (
+                <div className="space-y-2">
+                  <Label>{payMethod === 'Cheque' ? 'Cheque Number' : 'Transfer ID'} *</Label>
+                  <Input
+                    value={payReference}
+                    onChange={(e) => setPayReference(e.target.value)}
+                    placeholder={`Enter ${payMethod.toLowerCase()} reference`}
+                    required
+                  />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Max: {formatPKR(payingSale.outstanding)}
+              </p>
 
               <div className="flex gap-2">
                 <Button
@@ -567,8 +704,132 @@ const Sales = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ── Edit Sale Dialog ── */}
+      <Dialog open={editOpen} onOpenChange={(v) => { if (!v) setEditOpen(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Sale — {editingSale?.saleRef}</DialogTitle>
+            <DialogDescription>Modify the sale date, notes, or total amount.</DialogDescription>
+          </DialogHeader>
+
+          {editingSale && (
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+
+              {/* Editable Total Amount with live outstanding preview */}
+              <div className="space-y-2">
+                <Label>Total Sale Amount (PKR) *</Label>
+                <Input
+                  type="number"
+                  min={editingSale.amountPaid > 0 ? editingSale.amountPaid : 1}
+                  step={1}
+                  value={editTotalAmount}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (Number(v) < 0) return; // block negatives
+                    setEditTotalAmount(v);
+                  }}
+                  required
+                />
+                {editTotalAmount && Number(editTotalAmount) !== editingSale.totalAmount && (
+                  <div className="rounded bg-blue-50 dark:bg-blue-950/30 border border-blue-200 p-2 text-xs space-y-1">
+                    <p className="text-blue-700 dark:text-blue-300 font-medium">📝 Correction Preview</p>
+                    <p>Original total: <span className="font-semibold">{formatPKR(editingSale.totalAmount)}</span></p>
+                    <p>New total: <span className="font-semibold">{formatPKR(Number(editTotalAmount))}</span></p>
+                    <p>New outstanding: <span className="font-semibold text-red-600">{formatPKR(Math.max(0, Number(editTotalAmount) - editingSale.amountPaid))}</span></p>
+                    <p className="text-muted-foreground">A ledger correction entry will be posted automatically.</p>
+                  </div>
+                )}
+                {editingSale.amountPaid > 0 && (
+                  <p className="text-xs text-muted-foreground">Minimum: {formatPKR(editingSale.amountPaid)} (already paid — cannot reduce below this)</p>
+                )}
+              </div>
+
+              {/* Already paid / outstanding summary */}
+              <div className="rounded-lg bg-muted p-3 grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <p className="text-muted-foreground text-xs">Already Paid</p>
+                  <p className="font-semibold text-green-600">{formatPKR(editingSale.amountPaid)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Outstanding Now</p>
+                  <p className="font-semibold text-red-500">{formatPKR(editingSale.outstanding)}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Sale Date *</Label>
+                <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} required />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Delivery or payment details..."
+                />
+              </div>
+
+              {/* Quick payment from edit dialog */}
+              {editingSale.outstanding > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-3 space-y-2">
+                  <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Record Additional Payment</p>
+                  <div className="flex gap-2 items-center">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={editingSale.outstanding}
+                      placeholder={`Max: ${formatPKR(editingSale.outstanding)}`}
+                      value={payAmount}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        if (v < 0) return;
+                        if (v > editingSale.outstanding) { toast.error(`Max payment: ${formatPKR(editingSale.outstanding)}`); return; }
+                        setPayAmount(e.target.value);
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button" size="sm" variant="outline"
+                      disabled={paying || !payAmount || Number(payAmount) <= 0}
+                      onClick={async () => {
+                        const amount = Number(payAmount);
+                        if (!amount || amount <= 0 || amount > editingSale.outstanding) { toast.error("Invalid payment amount"); return; }
+                        setPaying(true);
+                        // Using 'Cash' as default for the quick-pay button in edit dialog for now, 
+                        // as there is no method selector here.
+                        const result = await addPayment(editingSale.id, amount, 'Cash');
+                        setPaying(false);
+                        if (result) {
+                          toast.success(`${formatPKR(amount)} payment recorded`);
+                          setPayAmount("");
+                          setEditingSale({ ...editingSale, amountPaid: editingSale.amountPaid + amount, outstanding: editingSale.outstanding - amount });
+                        } else {
+                          toast.error("Payment failed");
+                        }
+                      }}
+                    >
+                      {paying ? <Loader2 className="h-3 w-3 animate-spin" /> : "Record"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" className="flex-1" onClick={() => setEditOpen(false)}>Cancel</Button>
+                <Button type="submit" className="flex-1" disabled={editSubmitting}>
+                  {editSubmitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Updating...</> : "Save Changes"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };
 
-export default Sales;
+export default Sales;

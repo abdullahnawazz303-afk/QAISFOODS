@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useVendorStore } from "@/stores/vendorStore";
+import { useBookingStore } from "@/stores/bookingStore";
 import { useCashFlowStore } from "@/stores/cashFlowStore";
 import { EmptyState } from "@/components/EmptyState";
 import { KpiCard } from "@/components/KpiCard";
@@ -82,7 +83,12 @@ const VendorPayables = () => {
     }
 
     setSubmitting(true);
-    await recordPayment(selectedPayable.id, selectedPayable.vendorId, amount, method, notes);
+    
+    if (selectedPayable.type === 'booking') {
+      await useBookingStore.getState().addPayment(selectedPayable.id, amount, notes);
+    } else {
+      await recordPayment(selectedPayable.id, selectedPayable.vendorId, amount, method, notes);
+    }
 
     // Record cash outflow
     await addCashEntry(getTodayISO(), {
@@ -91,6 +97,11 @@ const VendorPayables = () => {
       amount,
       description: `Payment to ${getVendorName(selectedPayable.vendorId)} — ${notes || selectedPayable.description}`,
     });
+
+    // Refresh everything for accurate counters
+    await fetchVendors();
+    await fetchPurchases();
+    await useBookingStore.getState().fetchBookings();
 
     setSubmitting(false);
     setPayOpen(false);

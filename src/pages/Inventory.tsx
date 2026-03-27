@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog, DialogContent, DialogHeader,
+  Dialog, DialogContent, DialogDescription, DialogHeader,
   DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -92,11 +92,16 @@ const Inventory = () => {
   const [lines, setLines]                       = useState<BatchLineItem[]>([emptyLine()]);
   const [isCredit, setIsCredit]                 = useState(false);
   const [paymentTermsDays, setPaymentTermsDays] = useState("30");
+  const [amountPaidUpfront, setAmountPaidUpfront] = useState("");
+  const [purchasePaymentMethod, setPurchasePaymentMethod] = useState("Cash");
+  const [purchaseReferenceNumber, setPurchaseReferenceNumber] = useState("");
   const [submitting, setSubmitting]             = useState(false);
 
   // ── Pay dialog state
   const [payOpen, setPayOpen]             = useState(false);
   const [payingPurchase, setPayingPurchase] = useState<VendorPurchase | null>(null);
+  const [payMethod, setPayMethod]         = useState("Cash");
+  const [payReference, setPayReference]   = useState("");
   const [paySubmitting, setPaySubmitting] = useState(false);
 
   // ── Edit Batch state
@@ -174,15 +179,15 @@ const Inventory = () => {
   };
 
   // ── Line item helpers
-  const addLine    = () => setLines((p) => [...p, emptyLine()]);
-  const removeLine = (i: number) => setLines((p) => p.filter((_, idx) => idx !== i));
   const updateLine = (i: number, field: keyof BatchLineItem, value: string | number) =>
     setLines((p) => p.map((l, idx) => idx === i ? { ...l, [field]: value } : l));
 
   const resetForm = () => {
     setVendorId(""); setPurchaseDate(getTodayISO());
     setNotes(""); setLines([emptyLine()]);
-    setIsCredit(false); setPaymentTermsDays("30");
+    setIsCredit(false); setPaymentTermsDays("30"); setAmountPaidUpfront("");
+    setPurchasePaymentMethod("Cash");
+    setPurchaseReferenceNumber("");
   };
 
   const formatDueDate = (date: string, days: number) => {
@@ -216,9 +221,6 @@ const Inventory = () => {
     e.preventDefault();
     if (!vendorId) { toast.error("Please select a vendor"); return; }
 
-    const validLines = lines.filter(
-      (l) => l.itemName && l.quantity > 0 && l.purchasePrice > 0
-    );
     if (validLines.length === 0) {
       toast.error("Add at least one valid item with quantity and price");
       return;
@@ -228,6 +230,9 @@ const Inventory = () => {
     const ok = await addPurchase({
       vendorId, purchaseDate, isCredit,
       paymentTermsDays: isCredit ? parseInt(paymentTermsDays) : 0,
+      amountPaid: isCredit ? Number(amountPaidUpfront) : validLines.reduce((s, l) => s + l.quantity * l.purchasePrice, 0),
+      paymentMethod: purchasePaymentMethod,
+      referenceNumber: (purchasePaymentMethod === 'Bank Transfer' || purchasePaymentMethod === 'Cheque') ? purchaseReferenceNumber : undefined,
       notes, lines: validLines,
     });
     setSubmitting(false);
@@ -266,14 +271,8 @@ const Inventory = () => {
 
     setPaySubmitting(true);
     await recordPayment(
-      payingPurchase.id, payingPurchase.vendorId, amount, method, payNotes
+      payingPurchase.id, payingPurchase.vendorId, amount, payMethod, payNotes, payReference
     );
-    await addCashEntry(getTodayISO(), {
-      type: "out",
-      category: "Vendor Payment",
-      amount,
-      description: `Payment for ${payingPurchase.vendorName || ""} — ${payingPurchase.items.map((i: any) => i.itemName).join(", ")}`,
-    });
     setPaySubmitting(false);
     setPayOpen(false);
     setPayingPurchase(null);
@@ -309,6 +308,10 @@ const Inventory = () => {
 
   const getVendorName = (id: string) =>
     vendors.find((v) => v.id === id)?.name ?? "Unknown";
+
+  const validLines = lines.filter(
+    (l) => l.itemName && l.quantity > 0 && l.purchasePrice > 0
+  );
 
   // ── Filter + paginate
   const filtered = batches.filter((b) => {
@@ -399,46 +402,81 @@ const Inventory = () => {
                       onCheckedChange={(v) => { setIsCredit(v); if (!v) setPaymentTermsDays("30"); }}
                     />
                   </div>
-                  {isCredit ? (
+
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Payment Terms</Label>
-                      <Select value={paymentTermsDays} onValueChange={setPaymentTermsDays}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                      <Label>{isCredit ? "Amount Paid Upfront" : "Amount Paid Now"} (PKR)</Label>
+                      <Input
+                        type="number" min={0}
+                        value={isCredit ? amountPaidUpfront : validLines.reduce((s, l) => s + l.quantity * l.purchasePrice, 0)}
+                        onChange={(e) => isCredit && setAmountPaidUpfront(e.target.value)}
+                        placeholder="0"
+                        disabled={!isCredit}
+                        className={!isCredit ? "bg-muted font-semibold" : ""}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Payment Method</Label>
+                      <Select value={purchasePaymentMethod} onValueChange={setPurchasePaymentMethod}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Method" />
+                        </SelectTrigger>
                         <SelectContent>
-                          {PAYMENT_TERM_OPTIONS.map((o) => (
-                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                          ))}
+                          <SelectItem value="Cash">Cash</SelectItem>
+                          <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                          <SelectItem value="Cheque">Cheque</SelectItem>
                         </SelectContent>
                       </Select>
-                      {purchaseDate && (
-                        <p className="text-sm text-muted-foreground">
-                          Due Date:{" "}
-                          <span className="font-medium text-foreground">
-                            {formatDueDate(purchaseDate, parseInt(paymentTermsDays))}
-                          </span>
-                        </p>
-                      )}
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Cash purchase — full amount marked as paid immediately.
-                    </p>
+                  </div>
+
+                  {(purchasePaymentMethod === 'Bank Transfer' || purchasePaymentMethod === 'Cheque') && (
+                    <div className="space-y-2">
+                      <Label>{purchasePaymentMethod === 'Cheque' ? 'Cheque Number' : 'Transfer ID'} *</Label>
+                      <Input
+                        value={purchaseReferenceNumber}
+                        onChange={(e) => setPurchaseReferenceNumber(e.target.value)}
+                        placeholder={`Enter ${purchasePaymentMethod.toLowerCase()} reference`}
+                        required
+                      />
+                    </div>
+                  )}
+
+                  {isCredit && (
+                    <div className="space-y-4 pt-2">
+                      <div className="space-y-2">
+                        <Label>Payment Terms</Label>
+                        <Select value={paymentTermsDays} onValueChange={setPaymentTermsDays}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {PAYMENT_TERM_OPTIONS.map((o) => (
+                              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {purchaseDate && (
+                          <p className="text-sm text-muted-foreground">
+                            Due Date:{" "}
+                            <span className="font-medium text-foreground">
+                              {formatDueDate(purchaseDate, parseInt(paymentTermsDays))}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
 
                 {/* Line Items */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label className="text-base font-semibold">Items *</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={addLine}>
-                      <Plus className="h-3 w-3 mr-1" /> Add Item
-                    </Button>
+                    <Label className="text-base font-semibold">Item Details *</Label>
                   </div>
 
                   {lines.map((line, i) => (
                     <div
                       key={i}
-                      className="grid grid-cols-[1fr_80px_1fr_1fr_32px] gap-2 items-end rounded-md border p-3 bg-muted/30"
+                      className="grid grid-cols-[1fr_80px_1fr_1fr] gap-2 items-end rounded-md border p-3 bg-muted/30"
                     >
                       <div className="space-y-1">
                         <Label className="text-xs">Item</Label>
@@ -498,14 +536,6 @@ const Inventory = () => {
                           placeholder="0"
                         />
                       </div>
-                      <Button
-                        type="button" variant="ghost" size="icon"
-                        className="h-9 w-9 text-muted-foreground hover:text-destructive"
-                        onClick={() => removeLine(i)}
-                        disabled={lines.length === 1}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </div>
                   ))}
 
@@ -531,7 +561,7 @@ const Inventory = () => {
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting
                     ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
-                    : `Save Purchase (${lines.filter((l) => l.itemName && l.quantity > 0).length} item${lines.length > 1 ? "s" : ""})`
+                    : "Save Purchase"
                   }
                 </Button>
               </form>
@@ -711,6 +741,7 @@ const Inventory = () => {
         <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Manage Item Names</DialogTitle>
+            <DialogDescription>Add or remove standard items from your factory inventory list.</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -784,7 +815,10 @@ const Inventory = () => {
       {/* ── Pay Dialog ── */}
       <Dialog open={payOpen} onOpenChange={(v) => { setPayOpen(v); if (!v) setPayingPurchase(null); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Pay Vendor for this Purchase</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Pay Vendor for this Purchase</DialogTitle>
+            <DialogDescription>Record a payment to settle the balance for this inventory batch.</DialogDescription>
+          </DialogHeader>
           {payingPurchase && (
             <div className="space-y-4">
               <div className="rounded-lg bg-muted p-3 text-sm space-y-1">
@@ -819,16 +853,29 @@ const Inventory = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Payment Method</Label>
-                  <Select name="method" defaultValue="Cash">
+                  <Select value={payMethod} onValueChange={setPayMethod}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Cash">Cash</SelectItem>
-                      <SelectItem value="Bank">Bank Transfer</SelectItem>
+                      <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
                       <SelectItem value="Cheque">Cheque</SelectItem>
                       <SelectItem value="Other">Other</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
+                {(payMethod === 'Bank Transfer' || payMethod === 'Cheque') && (
+                  <div className="space-y-2">
+                    <Label>{payMethod === 'Cheque' ? 'Cheque Number' : 'Transfer ID'} *</Label>
+                    <Input
+                      value={payReference}
+                      onChange={(e) => setPayReference(e.target.value)}
+                      placeholder={`Enter ${payMethod.toLowerCase()} reference`}
+                      required
+                    />
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label>Notes</Label>
                   <Input name="notes" placeholder="Optional" />
@@ -849,7 +896,10 @@ const Inventory = () => {
       {/* ── Edit Batch Dialog ── */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Edit Batch Notes</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Edit Batch Notes</DialogTitle>
+            <DialogDescription>Update the memo for this inventory record.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Notes</Label>

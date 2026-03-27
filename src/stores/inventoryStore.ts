@@ -15,7 +15,10 @@ export interface AddPurchasePayload {
   purchaseDate: string;
   isCredit: boolean;
   paymentTermsDays: number;
+  amountPaid?: number;
   notes: string;
+  paymentMethod?: string;
+  referenceNumber?: string;
   lines: BatchLineItem[];
 }
 
@@ -137,10 +140,11 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
           pricePerKg: l.purchasePrice,
         })),
         totalAmount,
-        amountPaid: p.isCredit ? 0 : totalAmount,
+        amountPaid: p.isCredit ? (p.amountPaid || 0) : totalAmount,
         paymentTermsDays: p.paymentTermsDays,
-        paymentMethod: p.isCredit ? 'Other' : 'Cash',
+        paymentMethod: p.paymentMethod || (p.isCredit ? 'Other' : 'Cash'),
         notes: p.notes,
+        referenceNumber: p.referenceNumber,
       });
 
       if (!purchaseId) {
@@ -254,11 +258,90 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
   deleteBatch: async (batchId) => {
     const batch = get().batches.find(b => b.id === batchId);
     if (!batch) return { success: false, error: 'Batch not found' };
-    if (batch.remainingQuantity !== batch.quantity) {
-      return { success: false, error: 'Cannot delete batch that has been consumed or sold.' };
+
+    // Block deletion of batches that came from a delivered advance booking
+    if (batch.source === 'booking') {
+      return { success: false, error: 'This inventory was added via an Advance Booking delivery and cannot be deleted. Remove the advance booking instead.' };
     }
+
+    if (batch.remainingQuantity !== batch.quantity) {
+      return { success: false, error: 'Cannot delete inventory from which a sale has been made.' };
+    }
+
     
     set({ loading: true });
+
+    if (batch.purchaseId) {
+      const vendorStore = useVendorStore.getState();
+      const purchase = vendorStore.purchases.find(p => p.id === batch.purchaseId);
+      
+      if (purchase) {
+        // Revert Purchase Liability (Debit the vendor for the amount of the deleted purchase)
+        await vendorStore.addLedgerEntry(purchase.vendorId, {
+          date: new Date().toISOString().split('T')[0],
+          type: 'Adjustment',
+          description: `Inventory Deleted: Reversing Purchase Liability for ${batch.itemName}`,
+          debit: purchase.totalAmount,
+          credit: 0
+        });
+
+        // Revert up-front Payments (Vendor theoretically refunds us)
+        if (purchase.amountPaid && purchase.amountPaid > 0) {
+          // Revert Vendor Ledger payment record (reverses the total amount paid across all methods)
+          await vendorStore.addLedgerEntry(purchase.vendorId, {
+            date: new Date().toISOString().split('T')[0],
+            type: 'Adjustment',
+            description: `Inventory Deleted: Payment Reversal for ${batch.itemName}`,
+            debit: 0,
+            credit: purchase.amountPaid
+          });
+
+          // Clean up any Cheques or Bank Transfers 
+          await supabase.from('cheques')
+            .delete()
+            .eq('reference_id', purchase.id);
+
+          // Find exact cash payments to inject back into the register
+          const { data: cashPayments } = await supabase.from('vendor_payments')
+            .select('amount')
+            .eq('reference_id', purchase.id)
+            .eq('payment_method', 'Cash');
+
+          const totalCashRefund = (cashPayments || []).reduce((sum, p) => sum + p.amount, 0);
+
+          if (totalCashRefund > 0) {
+            // Re-inject cash back into today's register
+            const today = new Date().toISOString().split('T')[0];
+            const { data: cashDay } = await supabase.from('cash_days').select('id, is_closed').eq('business_date', today).maybeSingle();
+            if (cashDay && !cashDay.is_closed) {
+              await supabase.from('cash_entries').insert({
+                cash_day_id: cashDay.id,
+                entry_type: 'in',
+                category: 'Other Income',
+                amount: totalCashRefund,
+                description: `Cash Refund from deleted inventory: ${batch.itemName}`
+              });
+            }
+          }
+
+          // Delete all associated vendor_payments
+          await supabase.from('vendor_payments')
+            .delete()
+            .eq('reference_id', purchase.id);
+        }
+
+        // Unlink inventory_batches before deleting purchase to prevent FK constraint violation (409 Conflict)
+        await supabase.from('inventory_batches').update({ purchase_id: null }).eq('purchase_id', purchase.id);
+
+        // Cascade delete via Supabase client to sweep Payables pages
+        await supabase.from('vendor_purchase_items').delete().eq('purchase_id', purchase.id);
+        await supabase.from('vendor_purchases').delete().eq('id', purchase.id);
+        
+        // Refresh 
+        await vendorStore.fetchPurchases();
+      }
+    }
+
     await supabase.from('inventory_movements').delete().eq('batch_id', batchId);
     const { error } = await supabase.from('inventory_batches').delete().eq('id', batchId);
     

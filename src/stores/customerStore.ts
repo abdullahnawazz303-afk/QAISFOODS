@@ -308,7 +308,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
   getOutstanding: (customerId) => {
     const entries = get().ledgerEntries[customerId] || [];
     if (entries.length === 0) return 0;
-    return entries[entries.length - 1].balance;
+    return Math.max(0, entries[entries.length - 1].balance);
   },
 
   // ── Get total receivables across ALL customers
