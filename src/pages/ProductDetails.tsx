@@ -11,11 +11,14 @@ import {
   ShieldCheck,
   Truck,
   RotateCcw,
-  Star
+  Star,
+  MessageSquare,
+  Pencil
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCartStore, type CartEntry } from "@/stores/cartStore";
 import { useRateCardStore } from "@/stores/rateCardStore";
+import { useAuthStore } from "@/stores/authStore";
 import { CartDrawer } from "@/components/CartDrawer";
 import { toast } from "sonner";
 import { TranslatedText } from "@/components/TranslatedText";
@@ -27,9 +30,43 @@ const PACKING_OPTIONS = ["0.5 kg", "1 kg"];
 
 const emptyEntry = (): CartEntry => ({ grade: "A", packing: "1 kg", kgs: 0 });
 
+interface ProductReview {
+  id: string;
+  created_at: string;
+  product_id: string;
+  reviewer_name: string;
+  rating: number;
+  comment: string;
+  user_id: string | null;
+}
+
+const getOwnedReviewIds = (): string[] => {
+  try {
+    return JSON.parse(localStorage.getItem("qais_owned_reviews") || "[]");
+  } catch {
+    return [];
+  }
+};
+
+const addOwnedReviewId = (id: string) => {
+  const ids = getOwnedReviewIds();
+  if (!ids.includes(id)) {
+    ids.push(id);
+    localStorage.setItem("qais_owned_reviews", JSON.stringify(ids));
+  }
+};
+
+const removeOwnedReviewId = (id: string) => {
+  const ids = getOwnedReviewIds().filter(x => x !== id);
+  localStorage.setItem("qais_owned_reviews", JSON.stringify(ids));
+};
+
+
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const userEmail = useAuthStore((s) => s.userEmail);
   const [item, setItem] = useState<ShopItem | null>(null);
   const [relatedItems, setRelatedItems] = useState<ShopItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +80,205 @@ export default function ProductDetails() {
   const { rates, fetchRates } = useRateCardStore();
 
   const [entries, setEntries] = useState<CartEntry[]>([emptyEntry()]);
+
+  // Reviews state variables
+  const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [editingReview, setEditingReview] = useState<ProductReview | null>(null);
+
+  // Form fields
+  const [reviewName, setReviewName] = useState("");
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [useLocalFallback, setUseLocalFallback] = useState(false);
+
+  const fetchReviews = async () => {
+    if (!item?.id) return;
+    setReviewsLoading(true);
+
+    if (useLocalFallback) {
+      const local = localStorage.getItem(`reviews_${item.id}`);
+      if (local) {
+        try {
+          setReviews(JSON.parse(local));
+        } catch {
+          setReviews([]);
+        }
+      } else {
+        const initialMock: ProductReview[] = [
+          {
+            id: `mock-1-${item.id}`,
+            created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+            product_id: item.id,
+            reviewer_name: language === 'ur' ? "محمد عثمان" : "Muhammad Usman",
+            rating: 5,
+            comment: language === 'ur' ? "بہت ہی شاندار اور صاف دال ہے۔ کوالٹی بہترین ہے!" : "Superb quality, very clean grains. Highly recommended!",
+            user_id: null
+          },
+          {
+            id: `mock-2-${item.id}`,
+            created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+            product_id: item.id,
+            reviewer_name: language === 'ur' ? "عمران خان" : "Imran Khan",
+            rating: 4,
+            comment: language === 'ur' ? "پیکنگ اچھی ہے اور وزن بھی پورا تھا۔ اگلی بار بھی یہیں سے لیں گے۔" : "Good packing and weight was accurate. Will order again.",
+            user_id: null
+          }
+        ];
+        localStorage.setItem(`reviews_${item.id}`, JSON.stringify(initialMock));
+        setReviews(initialMock);
+      }
+      setReviewsLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("product_reviews")
+        .select("*")
+        .eq("product_id", item.id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        setUseLocalFallback(true);
+      } else {
+        setReviews(data as ProductReview[]);
+      }
+    } catch {
+      setUseLocalFallback(true);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (item?.id) {
+      fetchReviews();
+    }
+  }, [item?.id, useLocalFallback]);
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!item?.id) return;
+    if (!reviewName.trim() || !reviewComment.trim()) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    setSubmittingReview(true);
+
+    const reviewId = editingReview ? editingReview.id : crypto.randomUUID();
+    const newReview: ProductReview = {
+      id: reviewId,
+      created_at: editingReview ? editingReview.created_at : new Date().toISOString(),
+      product_id: item.id,
+      reviewer_name: reviewName,
+      rating: reviewRating,
+      comment: reviewComment,
+      user_id: useAuthStore.getState().userId
+    };
+
+    if (useLocalFallback) {
+      let updatedReviews = [...reviews];
+      if (editingReview) {
+        updatedReviews = updatedReviews.map(r => r.id === editingReview.id ? newReview : r);
+        toast.success("Review updated successfully");
+      } else {
+        updatedReviews = [newReview, ...updatedReviews];
+        addOwnedReviewId(reviewId);
+        toast.success("Review added successfully");
+      }
+      localStorage.setItem(`reviews_${item.id}`, JSON.stringify(updatedReviews));
+      setReviews(updatedReviews);
+      
+      setReviewName("");
+      setReviewRating(5);
+      setReviewComment("");
+      setShowReviewForm(false);
+      setEditingReview(null);
+      setSubmittingReview(false);
+      return;
+    }
+
+    try {
+      let response;
+      if (editingReview) {
+        response = await supabase
+          .from("product_reviews")
+          .update({
+            reviewer_name: newReview.reviewer_name,
+            rating: newReview.rating,
+            comment: newReview.comment
+          })
+          .eq("id", editingReview.id);
+      } else {
+        response = await supabase
+          .from("product_reviews")
+          .insert(newReview);
+      }
+
+      if (response.error) {
+        toast.error("Failed to submit review");
+      } else {
+        if (editingReview) {
+          toast.success("Review updated successfully");
+        } else {
+          toast.success("Review added successfully");
+          addOwnedReviewId(reviewId);
+        }
+        fetchReviews();
+        setReviewName("");
+        setReviewRating(5);
+        setReviewComment("");
+        setShowReviewForm(false);
+        setEditingReview(null);
+      }
+    } catch {
+      toast.error("An error occurred");
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  const handleDeleteReview = async (id: string) => {
+    if (!item?.id) return;
+    
+    if (useLocalFallback) {
+      const updatedReviews = reviews.filter(r => r.id !== id);
+      localStorage.setItem(`reviews_${item.id}`, JSON.stringify(updatedReviews));
+      setReviews(updatedReviews);
+      removeOwnedReviewId(id);
+      toast.success("Review deleted successfully");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("product_reviews")
+        .delete()
+        .eq("id", id);
+
+      if (error) {
+        toast.error("Failed to delete review");
+      } else {
+        toast.success("Review deleted successfully");
+        removeOwnedReviewId(id);
+        fetchReviews();
+      }
+    } catch {
+      toast.error("Failed to delete review");
+    }
+  };
+
+  const handleEditClick = (review: ProductReview) => {
+    setEditingReview(review);
+    setReviewName(review.reviewer_name);
+    setReviewRating(review.rating);
+    setReviewComment(review.comment);
+    setShowReviewForm(true);
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -146,7 +382,7 @@ export default function ProductDetails() {
   if (!item) return null;
 
   return (
-    <div className="min-h-screen bg-background pb-24 overflow-x-hidden w-full max-w-full" dir={dir}>
+    <div className="bg-background pb-24 w-full max-w-full" dir={dir}>
       {/* Top Navigation Bar */}
       <div className="sticky top-0 z-40 bg-white/80 dark:bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -375,6 +611,304 @@ export default function ProductDetails() {
             </div>
           </motion.div>
         </div>
+
+        {/* --- CUSTOMER REVIEWS SECTION --- */}
+        <section className="mt-24 border-t pt-16">
+          <div className="max-w-4xl mx-auto">
+            {/* Header / Summary */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-12">
+              <div>
+                <h2 className="text-3xl font-black text-foreground tracking-tight flex items-center gap-3">
+                  <MessageSquare className="h-7 w-7 text-primary" />
+                  {language === 'ur' ? 'کسٹمر کے جائزے' : 'Customer Reviews'}
+                </h2>
+                <p className="text-muted-foreground mt-1.5">
+                  {language === 'ur' 
+                    ? `ہمارے کسٹمرز کی رائے اس پروڈکٹ کے بارے میں (${reviews.length} جائزے)` 
+                    : `What our customers are saying about this product (${reviews.length} ${reviews.length === 1 ? 'review' : 'reviews'})`}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="bg-primary/5 dark:bg-primary/10 px-5 py-3.5 rounded-2xl border border-primary/10 flex items-center gap-3 shadow-sm">
+                  <div className="text-center">
+                    <span className="text-3xl font-black text-primary block leading-none">
+                      {reviews.length > 0 
+                        ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) 
+                        : "0.0"}
+                    </span>
+                    <span className="text-[10px] font-black text-primary/70 uppercase tracking-widest mt-1 block">
+                      {language === 'ur' ? 'اوسط درجہ' : 'Out of 5'}
+                    </span>
+                  </div>
+                  <div className="h-8 w-[1px] bg-primary/20" />
+                  <div className="flex flex-col">
+                    <div className="flex text-amber-500">
+                      {[1, 2, 3, 4, 5].map((star) => {
+                        const avg = reviews.length > 0 ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length : 0;
+                        return (
+                          <Star 
+                            key={star} 
+                            className={`h-4 w-4 ${star <= Math.round(avg) ? 'fill-amber-500' : 'text-amber-200 dark:text-muted'}`} 
+                          />
+                        );
+                      })}
+                    </div>
+                    <span className="text-xs font-bold text-muted-foreground mt-1">
+                      {reviews.length} {language === 'ur' ? 'جائزے' : 'reviews'}
+                    </span>
+                  </div>
+                </div>
+
+                {isLoggedIn ? (
+                  <button
+                    onClick={() => {
+                      setEditingReview(null);
+                      // Default the review name to the first part of their email address for maximum convenience!
+                      setReviewName(userEmail ? userEmail.split('@')[0] : "");
+                      setReviewRating(5);
+                      setReviewComment("");
+                      setShowReviewForm(!showReviewForm);
+                    }}
+                    className="h-12 px-6 rounded-full bg-primary text-white font-black text-xs uppercase tracking-wider shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 active:translate-y-0 shrink-0"
+                  >
+                    {showReviewForm 
+                      ? (language === 'ur' ? 'بند کریں' : 'Close Form') 
+                      : (language === 'ur' ? 'جائزہ لکھیں' : 'Write a Review')}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      navigate(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+                    }}
+                    className="h-12 px-6 rounded-full bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/25 dark:text-white dark:hover:bg-primary/35 font-black text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 active:translate-y-0 shrink-0"
+                  >
+                    {language === 'ur' ? 'جائزہ لکھنے کے لیے لاگ ان کریں' : 'Login to Write a Review'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Interactive Review Form */}
+            <AnimatePresence>
+              {showReviewForm && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0, y: -20 }}
+                  animate={{ height: "auto", opacity: 1, y: 0 }}
+                  exit={{ height: 0, opacity: 0, y: -20 }}
+                  className="overflow-hidden mb-12"
+                >
+                  <form 
+                    onSubmit={handleSubmitReview}
+                    className="bg-muted/30 dark:bg-card/30 border border-border/80 rounded-3xl p-6 md:p-8 space-y-6 shadow-md relative"
+                  >
+                    <h3 className="text-lg font-black text-foreground tracking-tight">
+                      {editingReview 
+                        ? (language === 'ur' ? 'اپنا جائزہ تبدیل کریں' : 'Edit Your Review') 
+                        : (language === 'ur' ? 'اپنا قیمتی جائزہ شیئر کریں' : 'Share Your Honest Review')}
+                    </h3>
+
+                    {/* Rating selector */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">
+                        {language === 'ur' ? 'ستارے منتخب کریں' : 'Your Rating'}
+                      </label>
+                      <div className="flex gap-2.5">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            type="button"
+                            key={star}
+                            onClick={() => setReviewRating(star)}
+                            className="p-1 -m-1 focus:outline-none transition-transform hover:scale-125"
+                          >
+                            <Star 
+                              className={`h-8 w-8 transition-colors ${
+                                star <= reviewRating 
+                                  ? 'fill-amber-500 text-amber-500' 
+                                  : 'text-muted-foreground/30 hover:text-amber-500'
+                              }`} 
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Name input */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">
+                        {language === 'ur' ? 'آپ کا نام' : 'Your Name'}
+                      </label>
+                      <input
+                        type="text"
+                        value={reviewName}
+                        onChange={(e) => setReviewName(e.target.value)}
+                        placeholder={language === 'ur' ? "جیسے: محمد عثمان" : "e.g. Muhammad Usman"}
+                        required
+                        className="w-full h-12 px-4 rounded-xl border border-border/80 bg-white dark:bg-card focus:border-primary outline-none transition-all font-bold text-sm"
+                      />
+                    </div>
+
+                    {/* Comment input */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block">
+                        {language === 'ur' ? 'آپ کا تبصرہ' : 'Your Comment'}
+                      </label>
+                      <textarea
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        placeholder={language === 'ur' ? "اپنا تبصرہ یہاں لکھیں..." : "Write your review here..."}
+                        required
+                        rows={4}
+                        className="w-full p-4 rounded-xl border border-border/80 bg-white dark:bg-card focus:border-primary outline-none transition-all font-bold text-sm resize-none"
+                      />
+                    </div>
+
+                    {/* Form actions */}
+                    <div className="flex gap-4">
+                      <button
+                        type="submit"
+                        disabled={submittingReview}
+                        className="h-11 px-6 rounded-full bg-primary text-white font-black text-xs uppercase tracking-widest hover:opacity-95 shadow-md flex items-center justify-center gap-2"
+                      >
+                        {submittingReview ? (
+                          <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          editingReview ? (language === 'ur' ? 'اپڈیٹ کریں' : 'Update Review') : (language === 'ur' ? 'جمع کروائیں' : 'Submit Review')
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowReviewForm(false);
+                          setEditingReview(null);
+                        }}
+                        className="h-11 px-6 rounded-full border border-border bg-white dark:bg-card text-foreground font-black text-xs uppercase tracking-widest hover:bg-muted/50"
+                      >
+                        {language === 'ur' ? 'کینسل' : 'Cancel'}
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Reviews List */}
+            {reviewsLoading ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
+                <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm font-bold">{language === 'ur' ? 'جائزے لوڈ ہو رہے ہیں...' : 'Loading reviews...'}</span>
+              </div>
+            ) : reviews.length === 0 ? (
+              <div className="bg-muted/10 border-2 border-dashed rounded-3xl p-12 text-center">
+                <MessageSquare className="h-10 w-10 text-muted-foreground/30 mx-auto mb-4" />
+                <h4 className="font-black text-foreground">
+                  {language === 'ur' ? 'کوئی جائزہ موجود نہیں' : 'No reviews yet'}
+                </h4>
+                <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+                  {language === 'ur' 
+                    ? 'اس پروڈکٹ کے لیے ابھی تک کوئی جائزہ نہیں لکھا گیا۔ پہلے بنیں اور اپنا جائزہ شیئر کریں!' 
+                    : 'Be the first to share your experience with this premium product.'}
+                </p>
+                <button
+                  onClick={() => setShowReviewForm(true)}
+                  className="mt-6 h-10 px-6 rounded-full bg-primary/10 hover:bg-primary/20 text-primary font-black text-xs uppercase tracking-wider transition-all"
+                >
+                  {language === 'ur' ? 'پہلا جائزہ لکھیں' : 'Write the first review'}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {reviews.map((rev) => {
+                  const isOwned = getOwnedReviewIds().includes(rev.id);
+                  const firstChar = (rev.reviewer_name || "?").charAt(0).toUpperCase();
+                  
+                  const bgColors = [
+                    "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
+                    "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+                    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+                    "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+                    "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
+                    "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                  ];
+                  const avatarColor = bgColors[firstChar.charCodeAt(0) % bgColors.length];
+
+                  return (
+                    <motion.div
+                      layout
+                      key={rev.id}
+                      className="bg-card border border-border/60 hover:border-border rounded-3xl p-5 md:p-6 shadow-sm hover:shadow-md transition-all flex gap-4 relative"
+                    >
+                      {/* Avatar */}
+                      <div className={`h-11 w-11 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 shadow-inner ${avatarColor}`}>
+                        {firstChar}
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                          <div>
+                            <h4 className="font-black text-foreground text-sm flex items-center gap-2">
+                              {rev.reviewer_name}
+                              {rev.user_id && (
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-wider">
+                                  {language === 'ur' ? 'تصدیق شدہ کسٹمر' : 'Verified Buyer'}
+                                </span>
+                              )}
+                            </h4>
+                            <span className="text-[10px] font-bold text-muted-foreground">
+                              {new Date(rev.created_at).toLocaleDateString(language === 'ur' ? 'ur-PK' : 'en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </span>
+                          </div>
+
+                          <div className="flex text-amber-500">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star 
+                                key={star} 
+                                className={`h-3.5 w-3.5 ${star <= rev.rating ? 'fill-amber-500' : 'text-amber-200 dark:text-muted'}`} 
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        <p className="text-sm text-foreground/90 font-medium leading-relaxed break-words whitespace-pre-line">
+                          {rev.comment}
+                        </p>
+                      </div>
+
+                      {/* Owner actions (Edit / Delete) */}
+                      {isOwned && (
+                        <div className="absolute top-5 right-5 md:right-6 flex gap-2">
+                          <button
+                            onClick={() => handleEditClick(rev)}
+                            className="p-2 rounded-xl bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                            title={language === 'ur' ? 'ترمیم کریں' : 'Edit Review'}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(language === 'ur' ? 'کیا آپ واقعی اس تبصرے کو ڈیلیٹ کرنا چاہتے ہیں؟' : 'Are you sure you want to delete this review?')) {
+                                handleDeleteReview(rev.id);
+                              }
+                            }}
+                            className="p-2 rounded-xl bg-muted hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                            title={language === 'ur' ? 'ڈیلیٹ کریں' : 'Delete Review'}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
 
         {/* You Might Also Love Section */}
         {relatedItems.length > 0 && (

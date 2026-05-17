@@ -1,25 +1,31 @@
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, ShoppingBag } from "lucide-react";
+import { Menu, X, ShoppingBag, User, LogOut, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
 import { CartDrawer } from "@/components/CartDrawer";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { QfLogo } from "@/components/QfLogo";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useUIStore } from "@/stores/uiStore";
-
+import { useAuthStore } from "@/stores/authStore";
 import { useTranslation } from "react-i18next";
 
 export function PublicNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const location = useLocation();
   const cartCount = useCartStore((s) => s.items.length);
   const { language } = useUIStore();
   const { t } = useTranslation();
+
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const userEmail = useAuthStore((s) => s.userEmail);
+  const userRole = useAuthStore((s) => s.userRole);
+  const logout = useAuthStore((s) => s.logout);
 
   const navLinks = [
     { label: t("shop"), to: "/shop" },
@@ -92,11 +98,76 @@ export function PublicNavbar() {
                 )}
               </button>
 
-              <Link to="/login">
-                <Button size="default" className="rounded-full bg-white dark:bg-primary text-primary dark:text-white hover:bg-white/95 dark:hover:bg-primary/90 font-black text-xs uppercase tracking-widest px-8 py-6 h-auto shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 active:translate-y-0">
-                  {t('login')}
-                </Button>
-              </Link>
+              {isLoggedIn ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setProfileOpen(!profileOpen)}
+                    className="w-12 h-12 rounded-full bg-white dark:bg-primary text-primary dark:text-white hover:bg-white/90 dark:hover:bg-primary/90 font-black text-sm uppercase shadow-lg border border-primary/20 flex items-center justify-center transition-all hover:scale-105"
+                  >
+                    {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
+                  </button>
+
+                  <AnimatePresence>
+                    {profileOpen && (
+                      <>
+                        {/* Dropdown Backdrop to close on outside click */}
+                        <div 
+                          className="fixed inset-0 z-40 cursor-default" 
+                          onClick={() => setProfileOpen(false)} 
+                        />
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute right-0 mt-3 w-56 rounded-2xl bg-white dark:bg-card border border-border/80 p-2 shadow-xl z-50 overflow-hidden"
+                        >
+                          <div className="px-3.5 py-3 border-b border-border/50 text-left">
+                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-0.5">
+                              {language === 'ur' ? 'لاگ ان شدہ اکاؤنٹ' : 'Logged in as'}
+                            </span>
+                            <span className="text-xs font-bold text-foreground truncate block" title={userEmail || ""}>
+                              {userEmail}
+                            </span>
+                          </div>
+
+                          <div className="py-1">
+                            <Link 
+                              to={userRole === "customer" ? "/portal" : "/dashboard"}
+                              onClick={() => setProfileOpen(false)}
+                              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-foreground hover:bg-muted/50 transition-colors text-left"
+                            >
+                              <LayoutDashboard className="h-4 w-4 text-primary" />
+                              <span>
+                                {userRole === "customer" 
+                                  ? (language === 'ur' ? 'میرا پورٹل' : 'My Portal') 
+                                  : (language === 'ur' ? 'ایڈمن ڈیش بورڈ' : 'Admin Dashboard')}
+                              </span>
+                            </Link>
+
+                            <button
+                              onClick={() => {
+                                setProfileOpen(false);
+                                logout();
+                              }}
+                              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-destructive hover:bg-destructive/5 transition-colors text-left"
+                            >
+                              <LogOut className="h-4 w-4" />
+                              <span>{language === 'ur' ? 'لاگ آؤٹ' : 'Log Out'}</span>
+                            </button>
+                          </div>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                <Link to={`/login?redirect=${encodeURIComponent(location.pathname)}`}>
+                  <Button size="default" className="rounded-full bg-white dark:bg-primary text-primary dark:text-white hover:bg-white/95 dark:hover:bg-primary/90 font-black text-xs uppercase tracking-widest px-8 py-6 h-auto shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 active:translate-y-0">
+                    {t('login')}
+                  </Button>
+                </Link>
+              )}
             </div>
 
             {/* Mobile right icons */}
@@ -171,11 +242,53 @@ export function PublicNavbar() {
                   {l.label}
                 </Link>
               ))}
-              <Link to="/login" onClick={() => setMobileOpen(false)} className="block mt-6">
-                <Button size="default" className="w-full bg-white dark:bg-primary text-primary dark:text-white hover:bg-gray-100 dark:hover:bg-primary/95 font-bold py-6 rounded-full shadow-lg">
-                  {t('login')}
-                </Button>
-              </Link>
+              {isLoggedIn ? (
+                <div className="mt-6 bg-white/10 dark:bg-primary/10 border border-white/10 dark:border-primary/10 rounded-2xl p-4 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-white dark:bg-primary text-primary dark:text-white font-black text-sm uppercase flex items-center justify-center shrink-0">
+                      {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <span className="text-[9px] font-black text-white/50 uppercase tracking-widest block">
+                        {language === 'ur' ? 'لاگ ان شدہ' : 'Logged In'}
+                      </span>
+                      <span className="text-xs font-bold text-white truncate block">
+                        {userEmail}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Link
+                      to={userRole === "customer" ? "/portal" : "/dashboard"}
+                      onClick={() => setMobileOpen(false)}
+                      className="h-10 rounded-xl bg-white/20 hover:bg-white/30 text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <LayoutDashboard className="h-4 w-4" />
+                      <span>
+                        {userRole === "customer" 
+                          ? (language === 'ur' ? 'پورٹل' : 'Portal') 
+                          : (language === 'ur' ? 'ایڈمن ڈیش بورڈ' : 'Admin Dashboard')}
+                      </span>
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setMobileOpen(false);
+                        logout();
+                      }}
+                      className="h-10 rounded-xl bg-destructive hover:bg-destructive/95 text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>{language === 'ur' ? 'لاگ آؤٹ' : 'Log Out'}</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <Link to={`/login?redirect=${encodeURIComponent(location.pathname)}`} onClick={() => setMobileOpen(false)} className="block mt-6">
+                  <Button size="default" className="w-full bg-white dark:bg-primary text-primary dark:text-white hover:bg-gray-100 dark:hover:bg-primary/95 font-bold py-6 rounded-full shadow-lg">
+                    {t('login')}
+                  </Button>
+                </Link>
+              )}
             </div>
           )}
         </AnimatePresence>

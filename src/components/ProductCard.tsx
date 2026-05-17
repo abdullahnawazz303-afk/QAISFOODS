@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ShoppingBag, Package, Eye } from "lucide-react";
+import { ShoppingBag, Package, Eye, Award } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export interface ShopItem {
@@ -28,10 +28,12 @@ export function ProductCard({
   item,
   lowestPrice,
   inCart,
+  isTopSeller,
 }: {
   item: ShopItem;
   lowestPrice: number | null;
   inCart?: boolean;
+  isTopSeller?: boolean;
 }) {
   const [imgError, setImgError] = useState(false);
   const activeLang = useActiveLanguage();
@@ -45,6 +47,7 @@ export function ProductCard({
     ? (item.name || item.english_name || "Unknown")
     : (item.english_name || item.name || "Unknown Product");
 
+
   return (
     <Link to={`/product/${item.id || item.name}`} className="block h-full outline-none" dir={activeLang === 'ur' ? 'rtl' : 'ltr'}>
       <motion.div
@@ -56,6 +59,13 @@ export function ProductCard({
       >
         {/* Image area */}
         <div className="relative aspect-[4/3] sm:aspect-square overflow-hidden bg-muted/30">
+          {isTopSeller && (
+            <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-lg border border-white/20">
+              <Award className="h-3.5 w-3.5" />
+              <span>{activeLang === 'ur' ? 'سب سے زیادہ مقبول' : 'Best Seller'}</span>
+            </div>
+          )}
+
           {item.image_url && !imgError ? (
             <img
               src={item.image_url}

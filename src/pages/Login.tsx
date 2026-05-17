@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -27,6 +27,7 @@ export default function Login() {
   const [emailError, setEmailError]     = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
+  const [searchParams]  = useSearchParams();
   const login           = useAuthStore((s) => s.login);
   const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
   const navigate        = useNavigate();
@@ -52,7 +53,12 @@ export default function Login() {
     }
 
     const role = useAuthStore.getState().userRole;
-    if (role === "customer") {
+    const redirectTo = searchParams.get("redirect");
+
+    if (redirectTo) {
+      toast.success("Welcome back!");
+      navigate(redirectTo, { replace: true });
+    } else if (role === "customer") {
       toast.success("Welcome! Redirecting to your portal...");
       navigate("/portal", { replace: true });
     } else {

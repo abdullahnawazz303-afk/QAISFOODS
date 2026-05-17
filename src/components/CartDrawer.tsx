@@ -338,9 +338,13 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
 
               {/* Note for unauthenticated users */}
               {!isLoggedIn && (
-                <div className="flex items-start gap-2 p-3 mb-4 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-800">
-                  <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
-                  <span className="font-medium leading-relaxed"><TranslatedText text="We'll verify your delivery details securely on the next step." /></span>
+                <div className="flex items-start gap-2 p-3 mb-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                  <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                  <span className="font-medium leading-relaxed">
+                    {language === 'ur' 
+                      ? 'آرڈر چیک آؤٹ کرنے کے لیے لاگ ان ہونا ضروری ہے۔' 
+                      : 'You must log in to proceed and checkout your wholesale order.'}
+                  </span>
                 </div>
               )}
 
@@ -377,12 +381,16 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                     <TranslatedText text="Staff accounts cannot place customer orders from the shop." />
                   </div>
                 ) : (
-                  // ── Not logged in: guest checkout
+                  // ── Not logged in: login required
                   <button
-                    onClick={() => setShowGuest(true)}
+                    onClick={() => {
+                      onClose();
+                      navigate(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+                    }}
                     className="w-full h-14 rounded-full bg-primary text-white font-black text-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-xl hover:-translate-y-1 hover:shadow-2xl"
                   >
-                    <TranslatedText text="Proceed to Checkout" /> <ExternalLink className={`h-5 w-5 ${language === 'ur' ? 'mr-1 rotate-180' : 'ml-1'}`} />
+                    <ExternalLink className={`h-5 w-5 ${language === 'ur' ? 'ml-1 rotate-180' : 'mr-1'}`} />
+                    <span>{language === 'ur' ? 'چیک آؤٹ کے لیے لاگ ان کریں' : 'Login to Checkout'}</span>
                   </button>
                 )}
                 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, ShoppingBag, Package, X, SlidersHorizontal, ArrowRight } from "lucide-react";
+import { Search, ShoppingBag, Package, X, SlidersHorizontal, ArrowRight, Flame, Award } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRateCardStore } from "@/stores/rateCardStore";
 import { ProductCard, type ShopItem } from "@/components/ProductCard";
@@ -26,6 +26,12 @@ export default function Shop() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [cartOpen, setCartOpen] = useState(false);
+  
+  // Advanced filters state
+  const [showFilters, setShowFilters] = useState(false);
+  const [minPrice, setMinPrice] = useState<number | "">("");
+  const [maxPrice, setMaxPrice] = useState<number | "">("");
+  const [sortBy, setSortBy] = useState<"none" | "price-asc" | "price-desc" | "name-asc">("none");
 
   const { language } = useUIStore();
   const dir = language === 'ur' ? 'rtl' : 'ltr';
@@ -49,7 +55,15 @@ export default function Shop() {
     })();
   }, [fetchRates]);
 
-  const filtered = items.filter((item) => {
+  // Compute lowest prices for items
+  const processedItems = items.map(item => {
+    const itemRates = rates.filter(r => r.item_name === item.name).map(r => r.price_per_kg);
+    const lowestPrice = itemRates.length > 0 ? Math.min(...itemRates) : null;
+    return { ...item, lowestPrice };
+  });
+
+  // Filter items
+  const filtered = processedItems.filter((item) => {
     const matchCategory =
       activeCategory === "all" || item.category === activeCategory;
     const q = search.toLowerCase();
@@ -57,13 +71,44 @@ export default function Shop() {
       !search ||
       (item.english_name || "").toLowerCase().includes(q) ||
       (item.name || "").includes(search);
-    return matchCategory && matchSearch;
+      
+    // Price filter
+    const price = item.lowestPrice;
+    const matchMinPrice = minPrice === "" || (price !== null && price >= Number(minPrice));
+    const matchMaxPrice = maxPrice === "" || (price !== null && price <= Number(maxPrice));
+
+    return matchCategory && matchSearch && matchMinPrice && matchMaxPrice;
   });
+
+  // Sort items
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === "price-asc") {
+      const pA = a.lowestPrice ?? Infinity;
+      const pB = b.lowestPrice ?? Infinity;
+      return pA - pB;
+    }
+    if (sortBy === "price-desc") {
+      const pA = a.lowestPrice ?? -Infinity;
+      const pB = b.lowestPrice ?? -Infinity;
+      return pB - pA;
+    }
+    if (sortBy === "name-asc") {
+      const nameA = language === 'ur' ? a.name : (a.english_name || a.name);
+      const nameB = language === 'ur' ? b.name : (b.english_name || b.name);
+      return nameA.localeCompare(nameB);
+    }
+    return 0; // none/default
+  });
+
+  // Identify top selling items
+  const topSellingItems = processedItems.filter(item =>
+    ["دال چنا باریک", "دال مسور", "چاول 386", "سفید لوبیا"].includes(item.name)
+  );
 
   const isInCart = (id: string) => cartItems.some((i) => i.itemId === id);
 
   return (
-    <div className="min-h-screen bg-background pb-20 overflow-x-hidden w-full max-w-full" dir={dir}>
+    <div className="bg-background pb-20 w-full max-w-full" dir={dir}>
       {/* Page Header Banner (Minimalist) */}
       <section className="bg-background pt-8 pb-4">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
@@ -107,23 +152,44 @@ export default function Shop() {
       <section className="sticky top-24 z-30 bg-background/80 backdrop-blur-xl border-b shadow-sm py-4 transition-all">
         <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row md:items-center gap-4">
           
-          {/* Search bar */}
-          <div className="relative w-full md:w-96 flex-shrink-0">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={language === 'ur' ? "مصنوعات تلاش کریں..." : "Search products..."}
-              className="w-full h-14 pl-12 pr-12 rounded-full border-2 border-border bg-white dark:bg-card text-base focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-sm transition-all font-medium"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-muted-foreground hover:text-white transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
+          {/* Search bar + Filter Toggle */}
+          <div className="flex items-center gap-3 w-full md:w-auto flex-1 md:flex-initial">
+            <div className="relative flex-1 md:w-96 md:flex-initial">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={language === 'ur' ? "مصنوعات تلاش کریں..." : "Search products..."}
+                className="w-full h-14 pl-12 pr-12 rounded-full border-2 border-border bg-white dark:bg-card text-base focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-sm transition-all font-medium"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-muted-foreground hover:text-white transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowFilters(!showFilters)}
+              className={`h-14 px-5 rounded-full border-2 font-bold flex items-center gap-2.5 transition-all shadow-sm ${
+                showFilters || minPrice !== "" || maxPrice !== "" || sortBy !== "none"
+                  ? "bg-primary/10 border-primary text-primary"
+                  : "bg-white dark:bg-card border-border text-foreground hover:border-primary/30"
+              }`}
+            >
+              <SlidersHorizontal className="h-5 w-5" />
+              <span className="hidden sm:inline text-sm">
+                <TranslatedText text="Filters" />
+              </span>
+              {(minPrice !== "" || maxPrice !== "" || sortBy !== "none") && (
+                <span className="w-2.5 h-2.5 rounded-full bg-primary" />
+              )}
+            </motion.button>
           </div>
 
           {/* Category pills */}
@@ -145,7 +211,153 @@ export default function Shop() {
         </div>
       </section>
 
-      {/* Product grid */}
+      {/* Collapsible Advanced Filters Panel */}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="bg-muted/30 dark:bg-card/20 border-b border-border/80 overflow-hidden"
+          >
+            <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+              
+              {/* Price Range Inputs */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black text-foreground uppercase tracking-widest flex items-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4 text-primary" />
+                  <TranslatedText text="Filter by Price (Rs/kg)" />
+                </h4>
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">Rs</span>
+                    <input
+                      type="number"
+                      value={minPrice}
+                      onChange={(e) => setMinPrice(e.target.value === "" ? "" : Number(e.target.value))}
+                      placeholder={language === 'ur' ? "کم سے کم" : "Min"}
+                      className="w-full h-11 pl-9 pr-3 rounded-xl border border-border bg-white dark:bg-card text-sm focus:outline-none focus:border-primary font-bold text-left"
+                      dir="ltr"
+                    />
+                  </div>
+                  <span className="text-muted-foreground font-black">—</span>
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">Rs</span>
+                    <input
+                      type="number"
+                      value={maxPrice}
+                      onChange={(e) => setMaxPrice(e.target.value === "" ? "" : Number(e.target.value))}
+                      placeholder={language === 'ur' ? "زیادہ سے زیادہ" : "Max"}
+                      className="w-full h-11 pl-9 pr-3 rounded-xl border border-border bg-white dark:bg-card text-sm focus:outline-none focus:border-primary font-bold text-left"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Price Presets */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black text-foreground uppercase tracking-widest">
+                  <TranslatedText text="Quick Price Ranges" />
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    { label: language === 'ur' ? "150 سے کم" : "Under 150", min: "", max: 150 },
+                    { label: "150 — 250", min: 150, max: 250 },
+                    { label: language === 'ur' ? "250 سے زیادہ" : "Over 250", min: 250, max: "" }
+                  ] as { label: string; min: number | ""; max: number | "" }[]).map((preset, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setMinPrice(preset.min);
+                        setMaxPrice(preset.max);
+                      }}
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-card border border-border hover:border-primary hover:text-primary transition-all shadow-sm"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sorting & Reset */}
+              <div className="space-y-3 flex flex-col justify-between">
+                <div>
+                  <h4 className="text-xs font-black text-foreground uppercase tracking-widest mb-2">
+                    <TranslatedText text="Sort Grains By" />
+                  </h4>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="w-full h-11 px-3.5 rounded-xl border border-border bg-white dark:bg-card text-xs font-bold focus:outline-none focus:border-primary"
+                  >
+                    <option value="none">{language === 'ur' ? "عام ترتیب (پہلے سے طے شدہ)" : "Default (Featured)"}</option>
+                    <option value="price-asc">{language === 'ur' ? "قیمت: کم سے زیادہ" : "Price: Low to High"}</option>
+                    <option value="price-desc">{language === 'ur' ? "قیمت: زیادہ سے کم" : "Price: High to Low"}</option>
+                    <option value="name-asc">{language === 'ur' ? "حروف تہجی: الف سے یہ" : "Product Name (A-Z)"}</option>
+                  </select>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  {(minPrice !== "" || maxPrice !== "" || sortBy !== "none") && (
+                    <button
+                      onClick={() => {
+                        setMinPrice("");
+                        setMaxPrice("");
+                        setSortBy("none");
+                      }}
+                      className="text-xs font-bold text-destructive hover:underline"
+                    >
+                      <TranslatedText text="Reset Filters" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Top Selling Products Showcase (Customer Favorites) */}
+      {!loading && !search && activeCategory === "all" && minPrice === "" && maxPrice === "" && topSellingItems.length > 0 && (
+        <section className="pt-10 pb-2 relative">
+          <div className="max-w-7xl mx-auto px-4 md:px-8">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-9 h-9 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-600">
+                <Flame className="h-5 w-5 fill-current" />
+              </div>
+              <h2 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-3">
+                <TranslatedText text="Top Selling Grains" />
+                <span className="hidden md:inline-block text-[10px] font-black text-primary bg-primary/10 px-3 py-1 rounded-full uppercase tracking-wider">
+                  {language === 'ur' ? 'کسٹمرز کی پہلی پسند' : 'Customer Favorites'}
+                </span>
+              </h2>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+              {topSellingItems.map((item) => {
+                const itemRates = rates.filter(r => r.item_name === item.name).map(r => r.price_per_kg);
+                const lowestPrice = itemRates.length > 0 ? Math.min(...itemRates) : null;
+                
+                return (
+                  <ProductCard
+                    key={`top-${item.id || item.name}`}
+                    item={item}
+                    lowestPrice={lowestPrice}
+                    inCart={isInCart(item.id || item.name)}
+                    isTopSeller={true}
+                  />
+                );
+              })}
+            </div>
+            
+            <div className="border-b border-border/50 mt-12 w-full" />
+          </div>
+        </section>
+      )}
+
+      {/* Main Product Grid */}
       <section className="py-8 md:py-12 relative">
         {/* Subtle background blob */}
         <div className="absolute top-1/4 right-0 w-[600px] h-[600px] bg-primary/5 blob-shape pointer-events-none -z-10" />
@@ -154,7 +366,7 @@ export default function Shop() {
           {/* Results count */}
           <div className="flex items-center justify-between mb-8">
             <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
-              {loading ? <TranslatedText text="Loading Catalog..." /> : <TranslatedText text={`Showing ${filtered.length} Product${filtered.length !== 1 ? "s" : ""}`} />}
+              {loading ? <TranslatedText text="Loading Catalog..." /> : <TranslatedText text={`Showing ${sorted.length} Product${sorted.length !== 1 ? "s" : ""}`} />}
             </p>
           </div>
 
@@ -164,7 +376,7 @@ export default function Shop() {
                 <div key={i} className="rounded-[2.5rem] bg-muted/40 animate-pulse aspect-[3/4]" />
               ))}
             </div>
-          ) : filtered.length === 0 ? (
+          ) : sorted.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 text-center gap-4 bg-white dark:bg-card rounded-[3rem] border shadow-sm">
               <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
                 <SlidersHorizontal className="h-10 w-10 text-primary" />
@@ -172,7 +384,13 @@ export default function Shop() {
               <p className="text-2xl font-display font-black text-foreground"><TranslatedText text="No products found" /></p>
               <p className="text-base text-muted-foreground max-w-md"><TranslatedText text="Try adjusting your search or category filter to find what you're looking for." /></p>
               <button
-                onClick={() => { setSearch(""); setActiveCategory("all"); }}
+                onClick={() => {
+                  setSearch("");
+                  setActiveCategory("all");
+                  setMinPrice("");
+                  setMaxPrice("");
+                  setSortBy("none");
+                }}
                 className="mt-4 px-8 py-3 rounded-full bg-primary text-white font-bold hover:bg-primary/90 transition-colors shadow-lg"
               >
                 <TranslatedText text="Clear all filters" />
@@ -180,16 +398,15 @@ export default function Shop() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8">
-              {filtered.map((item) => {
-                const itemRates = rates.filter(r => r.item_name === item.name).map(r => r.price_per_kg);
-                const lowestPrice = itemRates.length > 0 ? Math.min(...itemRates) : null;
-                
+              {sorted.map((item) => {
+                const isTop = ["دال چنا باریک", "دال مسور", "چاول 386", "سفید لوبیا"].includes(item.name);
                 return (
                   <ProductCard
                     key={item.id || `idx-${item.name}`}
                     item={item}
-                    lowestPrice={lowestPrice}
+                    lowestPrice={item.lowestPrice}
                     inCart={isInCart(item.id || item.name)}
+                    isTopSeller={isTop}
                   />
                 )
               })}
@@ -205,3 +422,4 @@ export default function Shop() {
     </div>
   );
 }
+
