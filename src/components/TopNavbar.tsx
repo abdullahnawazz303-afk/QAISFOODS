@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { QfLogo } from "@/components/QfLogo";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -73,6 +75,11 @@ export function TopNavbar() {
       <QfLogo className="ml-2 scale-[0.65] md:scale-75 origin-left" />
 
       <div className="flex-1" />
+
+      <div className="flex items-center gap-2 mr-2">
+        <ThemeSwitcher />
+        <LanguageSwitcher />
+      </div>
 
       {/* Account Popover */}
       <Popover open={accountOpen} onOpenChange={(v) => { setAccountOpen(v); if (!v) setChangingPw(false); }}>

@@ -38,11 +38,22 @@ const FALLBACK_SLIDES: HeroSlide[] = [
   },
 ];
 
+import { useTranslation } from "react-i18next";
+import { useUIStore } from "@/stores/uiStore";
+import { useDynamicTranslation } from "@/hooks/useDynamicTranslation";
+
 export function HeroSlider() {
   const [slides, setSlides] = useState<HeroSlide[]>(FALLBACK_SLIDES);
   const [current, setCurrent] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const { t } = useTranslation();
+  const { language } = useUIStore();
+  
+  const slide = slides[current] || FALLBACK_SLIDES[0];
+  const translatedTitle = useDynamicTranslation(slide.title);
+  const translatedSubtitle = useDynamicTranslation(slide.subtitle);
 
   // Fetch admin-uploaded slides
   useEffect(() => {
@@ -78,8 +89,6 @@ export function HeroSlider() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [resetTimer]);
 
-  const slide = slides[current];
-
   const variants = {
     enter: (dir: number) => ({ x: dir > 0 ? 100 : -100, opacity: 0 }),
     center: { x: 0, opacity: 1 },
@@ -87,7 +96,7 @@ export function HeroSlider() {
   };
 
   return (
-    <section className="relative w-full overflow-hidden bg-[#F9F9F9] pt-24 pb-12 lg:pt-32 lg:pb-20 min-h-[600px] lg:min-h-[85vh] flex items-center">
+    <section className="relative w-full overflow-hidden bg-[#F9F9F9] dark:bg-background pt-24 pb-12 lg:pt-32 lg:pb-20 min-h-[600px] lg:min-h-[85vh] flex items-center">
       
       {/* Decorative Blob Backgrounds */}
       <div className="absolute top-0 right-0 w-full max-w-[60%] h-full z-0 overflow-hidden pointer-events-none opacity-20">
@@ -109,14 +118,20 @@ export function HeroSlider() {
             {/* Left Content (Typography) */}
             <div className="order-2 lg:order-1 text-center lg:text-left flex flex-col items-center lg:items-start pt-8 lg:pt-0">
               <span className="inline-block py-1.5 px-4 rounded-full bg-primary/10 text-primary font-bold text-xs tracking-widest uppercase mb-6 shadow-sm">
-                Premium Quality
+                {t('premium_quality')}
               </span>
-              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-black text-foreground leading-[1.1] mb-6 uppercase">
-                {slide.title}
+              <h1 
+                className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-black text-foreground leading-[1.1] mb-6 uppercase"
+                style={language === 'ur' ? { fontFamily: "Noto Nastaliq Urdu, 'Jameel Noori Nastaleeq', serif", lineHeight: 1.8 } : {}}
+              >
+                {translatedTitle}
               </h1>
-              {slide.subtitle && (
-                <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl leading-relaxed">
-                  {slide.subtitle}
+              {translatedSubtitle && (
+                <p 
+                  className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl leading-relaxed"
+                  style={language === 'ur' ? { fontFamily: "Noto Nastaliq Urdu, 'Jameel Noori Nastaleeq', serif" } : {}}
+                >
+                  {translatedSubtitle}
                 </p>
               )}
               <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
@@ -125,13 +140,13 @@ export function HeroSlider() {
                   className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-primary text-white font-bold text-base hover:bg-primary/90 transition-all shadow-xl hover:-translate-y-1"
                 >
                   <ShoppingBag className="h-5 w-5" />
-                  Shop Now
+                  {t('shop_now')}
                 </Link>
                 <Link
                   to="/contact"
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-full border-[3px] border-border text-foreground font-bold text-base hover:border-primary hover:text-primary transition-all hover:-translate-y-1 bg-white"
+                  className="inline-flex items-center gap-2 px-8 py-4 rounded-full border-[3px] border-border text-foreground font-bold text-base hover:border-primary hover:text-primary transition-all hover:-translate-y-1 bg-white dark:bg-card"
                 >
-                  Contact Us
+                  {t('contact_us')}
                 </Link>
               </div>
             </div>
@@ -155,14 +170,14 @@ export function HeroSlider() {
               <div className="absolute -bottom-6 right-0 lg:right-auto lg:-bottom-12 lg:-left-12 z-20 flex gap-3">
                 <button
                   onClick={() => { prev(); resetTimer(); }}
-                  className="w-12 h-12 rounded-full bg-white text-primary shadow-xl hover:bg-primary hover:text-white transition-all flex items-center justify-center border border-primary/10"
+                  className="w-12 h-12 rounded-full bg-white dark:bg-card text-primary shadow-xl hover:bg-primary hover:text-white transition-all flex items-center justify-center border border-primary/10"
                   aria-label="Previous slide"
                 >
                   <ChevronLeft className="h-6 w-6" />
                 </button>
                 <button
                   onClick={() => { next(); resetTimer(); }}
-                  className="w-12 h-12 rounded-full bg-white text-primary shadow-xl hover:bg-primary hover:text-white transition-all flex items-center justify-center border border-primary/10"
+                  className="w-12 h-12 rounded-full bg-white dark:bg-card text-primary shadow-xl hover:bg-primary hover:text-white transition-all flex items-center justify-center border border-primary/10"
                   aria-label="Next slide"
                 >
                   <ChevronRight className="h-6 w-6" />
@@ -180,11 +195,11 @@ export function HeroSlider() {
           xmlns="http://www.w3.org/2000/svg" 
           viewBox="0 0 1200 120" 
           preserveAspectRatio="none" 
-          className="relative block w-full h-[30px] md:h-[60px]"
+          className="relative block w-full h-[30px] md:h-[60px] text-background"
         >
           <path 
             d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" 
-            className="fill-background"
+            className="fill-current"
           ></path>
         </svg>
       </div>

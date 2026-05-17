@@ -7,10 +7,14 @@ import { MapPin, Phone, Mail, Clock, Send, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { TranslatedText } from "@/components/TranslatedText";
+import { useUIStore } from "@/stores/uiStore";
 
 export default function Contact() {
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { language } = useUIStore();
+  const dir = language === 'ur' ? 'rtl' : 'ltr';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,22 +40,22 @@ export default function Contact() {
       const result = await response.json();
 
       if (result.success) {
-        toast.success("Thank you! Your message has been sent. We'll get back to you soon.");
+        toast.success(language === 'ur' ? "شکریہ! آپ کا پیغام بھیج دیا گیا ہے۔ ہم جلد آپ سے رابطہ کریں گے۔" : "Thank you! Your message has been sent. We'll get back to you soon.");
         setForm({ name: "", email: "", message: "" });
       } else {
         toast.error(result.message || "Something went wrong. Please try again later.");
       }
     } catch (error) {
-      toast.error("Failed to send message. Please check your internet connection.");
+      toast.error(language === 'ur' ? "پیغام بھیجنے میں ناکامی۔ براہ کرم اپنا انٹرنیٹ کنکشن چیک کریں۔" : "Failed to send message. Please check your internet connection.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-hidden w-full max-w-full" dir={dir}>
       {/* Hero */}
-      <section className="relative bg-primary py-20 md:py-28 overflow-hidden">
+      <section className="relative bg-primary dark:bg-card py-20 md:py-28 overflow-hidden border-b dark:border-border/10">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-white/20 blur-3xl -translate-y-1/2 translate-x-1/3" />
           <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full bg-white/15 blur-3xl translate-y-1/3 -translate-x-1/4" />
@@ -62,12 +66,14 @@ export default function Contact() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <span className="inline-block text-xs font-semibold text-primary-foreground/80 uppercase tracking-widest mb-4 px-4 py-1.5 rounded-full border border-white/20 bg-white/10">
-            Get in Touch
+          <span className="inline-block text-xs font-semibold text-primary-foreground dark:text-primary uppercase tracking-widest mb-4 px-4 py-1.5 rounded-full border border-white/20 dark:border-primary/20 bg-white/10 dark:bg-primary/5">
+            <TranslatedText text="Get in Touch" />
           </span>
-          <h1 className="text-4xl md:text-5xl font-bold text-primary-foreground mb-4 tracking-tight">Contact Us</h1>
-          <p className="text-lg text-primary-foreground/80 max-w-xl mx-auto leading-relaxed">
-            Have a question or want to place a bulk order? Our team is ready to help.
+          <h1 className="text-4xl md:text-5xl font-bold text-primary-foreground dark:text-foreground mb-4 tracking-tight">
+            <TranslatedText text="Contact Us" />
+          </h1>
+          <p className="text-lg text-primary-foreground/80 dark:text-muted-foreground max-w-xl mx-auto leading-relaxed">
+            <TranslatedText text="Have a question or want to place a bulk order? Our team is ready to help." />
           </p>
         </motion.div>
       </section>
@@ -83,23 +89,27 @@ export default function Contact() {
           >
             <Card className="shadow-lg border-none">
               <CardHeader className="pb-2">
-                <CardTitle className="text-2xl">Send us a Message</CardTitle>
-                <p className="text-sm text-muted-foreground">Fill out the form and we'll respond within 24 hours.</p>
+                <CardTitle className="text-2xl">
+                  <TranslatedText text="Send us a Message" />
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  <TranslatedText text="Fill out the form and we'll respond within 24 hours." />
+                </p>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
+                    <Label htmlFor="name"><TranslatedText text="Full Name" /></Label>
                     <Input
                       id="name"
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      placeholder="Your name"
+                      placeholder={language === 'ur' ? "آپ کا نام" : "Your name"}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email"><TranslatedText text="Email" /></Label>
                     <Input
                       id="email"
                       type="email"
@@ -110,21 +120,21 @@ export default function Contact() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="message">Message</Label>
+                    <Label htmlFor="message"><TranslatedText text="Message" /></Label>
                     <Textarea
                       id="message"
                       rows={5}
                       value={form.message}
                       onChange={(e) => setForm({ ...form, message: e.target.value })}
-                      placeholder="Tell us about your requirements..."
+                      placeholder={language === 'ur' ? "اپنی ضروریات کے بارے میں بتائیں..." : "Tell us about your requirements..."}
                       required
                     />
                   </div>
                   <Button type="submit" className="w-full h-11" size="lg" disabled={isSubmitting}>
                     {isSubmitting ? (
-                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending...</>
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> <TranslatedText text="Sending..." /></>
                     ) : (
-                      <><Send className="h-4 w-4 mr-2" /> Send Message</>
+                      <><Send className="h-4 w-4 mr-2" /> <TranslatedText text="Send Message" /></>
                     )}
                   </Button>
                 </form>
@@ -141,9 +151,11 @@ export default function Contact() {
             transition={{ duration: 0.5 }}
           >
             <div>
-              <h3 className="text-2xl font-bold text-foreground mb-3">Let's Work Together</h3>
+              <h3 className="text-2xl font-bold text-foreground mb-3">
+                <TranslatedText text="Let's Work Together" />
+              </h3>
               <p className="text-muted-foreground leading-relaxed">
-                Whether you need bulk pricing, wholesale partnerships, or have any questions about our products — we're just a message away.
+                <TranslatedText text="Whether you need bulk pricing, wholesale partnerships, or have any questions about our products — we're just a message away." />
               </p>
             </div>
 
@@ -159,8 +171,12 @@ export default function Contact() {
                     <item.icon className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-foreground text-sm">{item.label}</h4>
-                    <p className="text-sm text-muted-foreground mt-0.5">{item.value}</p>
+                    <h4 className="font-semibold text-foreground text-sm">
+                      <TranslatedText text={item.label} />
+                    </h4>
+                    <p className="text-sm text-muted-foreground mt-0.5" dir="ltr">
+                      <TranslatedText text={item.value} />
+                    </p>
                   </div>
                 </div>
               ))}

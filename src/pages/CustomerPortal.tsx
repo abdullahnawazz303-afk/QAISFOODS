@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
+import { AutoTranslationContainer } from "@/components/AutoTranslationContainer";
 import { useAuthStore } from "@/stores/authStore";
 import { useOnlineOrderStore } from "@/stores/onlineOrderStore";
 import { useCustomerStore } from "@/stores/customerStore";
 import { useRateCardStore } from "@/stores/rateCardStore";
 import { supabase } from "@/integrations/supabase/client";
 import { QfLogo } from "@/components/QfLogo";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -231,7 +234,8 @@ const CustomerPortal = () => {
   const cancelTarget = orders.find(o => o.id === cancelOrderId);
 
   return (
-    <div className="min-h-screen bg-background">
+    <AutoTranslationContainer>
+      <div className="min-h-screen bg-background">
 
       {/* Top bar */}
       <div className="border-b bg-card px-4 py-3 flex items-center justify-between">
@@ -244,6 +248,8 @@ const CustomerPortal = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <ThemeSwitcher className="h-9 w-9" />
+          <LanguageSwitcher className="h-9 px-2 sm:px-3" />
           {/* Account Popover */}
           <Popover open={accountOpen} onOpenChange={v => { setAccountOpen(v); if (!v) setAccountView('profile'); }}>
             <PopoverTrigger asChild>
@@ -718,6 +724,7 @@ const CustomerPortal = () => {
         </DialogContent>
       </Dialog>
     </div>
+    </AutoTranslationContainer>
   );
 };
 

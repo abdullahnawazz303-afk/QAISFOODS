@@ -8,6 +8,7 @@ import { PublicLayout } from "@/components/PublicLayout";
 import { AppLayout } from "@/components/AppLayout";
 import ScrollToTop from "@/components/ScrollToTop";
 import { useAuthStore } from "@/stores/authStore";
+import { LanguageSync } from "@/components/LanguageSync";
 
 // Public pages
 import Home from "./pages/Home";
@@ -93,6 +94,7 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <ScrollToTop />
+          <LanguageSync />
           <Routes>
 
             {/* ── Public website ── */}

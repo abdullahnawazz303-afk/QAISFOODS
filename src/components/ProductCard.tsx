@@ -22,6 +22,8 @@ const CATEGORIES = [
   { key: "others", label: "Others",         urdu: "دیگر" },
 ];
 
+import { useActiveLanguage } from "@/hooks/useActiveLanguage";
+
 export function ProductCard({
   item,
   lowestPrice,
@@ -32,23 +34,32 @@ export function ProductCard({
   inCart?: boolean;
 }) {
   const [imgError, setImgError] = useState(false);
-  const categoryLabel = CATEGORIES.find((c) => c.key === item.category)?.label || "Others";
+  const activeLang = useActiveLanguage();
+  
+  const categoryObj = CATEGORIES.find((c) => c.key === item.category);
+  const categoryLabel = activeLang === 'ur' 
+    ? (categoryObj?.urdu || "دیگر") 
+    : (categoryObj?.label || "Others");
+
+  const displayName = activeLang === 'ur' 
+    ? (item.name || item.english_name || "Unknown")
+    : (item.english_name || item.name || "Unknown Product");
 
   return (
-    <Link to={`/product/${item.id || item.name}`} className="block h-full outline-none">
+    <Link to={`/product/${item.id || item.name}`} className="block h-full outline-none" dir={activeLang === 'ur' ? 'rtl' : 'ltr'}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-20px" }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="group bg-white rounded-2xl border border-transparent shadow-sm hover:shadow-2xl hover:border-primary/20 overflow-hidden transition-all duration-500 h-full flex flex-col relative"
+        className="group bg-white dark:bg-card rounded-2xl border border-transparent dark:border-border/30 shadow-sm hover:shadow-2xl hover:border-primary/20 overflow-hidden transition-all duration-500 h-full flex flex-col relative product-card"
       >
         {/* Image area */}
         <div className="relative aspect-[4/3] sm:aspect-square overflow-hidden bg-muted/30">
           {item.image_url && !imgError ? (
             <img
               src={item.image_url}
-              alt={item.english_name || item.name || "Product"}
+              alt={displayName}
               loading="lazy"
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
               onError={() => setImgError(true)}
@@ -61,9 +72,11 @@ export function ProductCard({
 
           {/* Quick View Overlay */}
           <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4 pointer-events-none">
-            <div className="bg-white/95 backdrop-blur-md px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+            <div className="bg-white/95 dark:bg-card/95 backdrop-blur-md px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
               <Eye className="h-4 w-4 text-primary" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-foreground">Quick View</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-foreground">
+                {activeLang === 'ur' ? 'فوری دیکھیں' : 'Quick View'}
+              </span>
             </div>
           </div>
         </div>
@@ -74,16 +87,12 @@ export function ProductCard({
             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block">
               {categoryLabel}
             </span>
-            <h3 className="text-base font-bold text-foreground leading-tight mb-1 line-clamp-1 group-hover:text-primary transition-colors">
-              {item.english_name || item.name || "Unknown Product"}
-            </h3>
-            <p
-              className="text-xs text-muted-foreground mb-2 line-clamp-1"
-              dir="rtl"
-              style={{ fontFamily: "Noto Nastaliq Urdu, 'Jameel Noori Nastaleeq', serif" }}
+            <h3 
+              className="text-base font-bold text-foreground group-hover:text-primary transition-colors"
+              style={activeLang === 'ur' ? { fontFamily: "Noto Nastaliq Urdu, 'Jameel Noori Nastaleeq', serif", lineHeight: 1.8, paddingBottom: '4px' } : { lineHeight: 1.3 }}
             >
-              {item.name}
-            </p>
+              {displayName}
+            </h3>
           </div>
 
           {/* Pricing & Action */}

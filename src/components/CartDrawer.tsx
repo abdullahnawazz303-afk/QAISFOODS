@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { notifyAdminWhatsApp } from "@/lib/whatsapp";
 import { GuestCheckoutModal } from "./GuestCheckoutModal";
 import { AddToCartModal } from "./AddToCartModal";
+import { TranslatedText } from "@/components/TranslatedText";
+import { useUIStore } from "@/stores/uiStore";
 
 interface CartDrawerProps {
   onClose: () => void;
@@ -23,6 +25,9 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
   const customerId = useAuthStore((s) => s.customerId);
   const userRole   = useAuthStore((s) => s.userRole);
   
+  const { language } = useUIStore();
+  const dir = language === 'ur' ? 'rtl' : 'ltr';
+
   const { rates } = useRateCardStore();
 
   const [editingItem, setEditingItem] = useState<string | null>(null);
@@ -142,11 +147,12 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
 
         {/* Drawer */}
         <motion.div
-          className="relative bg-background w-full max-w-md h-full flex flex-col shadow-2xl rounded-l-3xl overflow-hidden"
-          initial={{ x: "100%" }}
+          className={`relative bg-background w-full max-w-md h-full flex flex-col shadow-2xl overflow-hidden ${language === 'ur' ? 'rounded-r-3xl' : 'rounded-l-3xl'}`}
+          initial={{ x: language === 'ur' ? "-100%" : "100%" }}
           animate={{ x: 0 }}
-          exit={{ x: "100%" }}
+          exit={{ x: language === 'ur' ? "-100%" : "100%" }}
           transition={{ duration: 0.4, type: "spring", damping: 25, stiffness: 200 }}
+          dir={dir}
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-border/50 bg-white">
@@ -155,10 +161,10 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                 <ShoppingBag className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h2 className="text-xl font-black text-foreground tracking-tight leading-none">Your Cart</h2>
+                <h2 className="text-xl font-black text-foreground tracking-tight leading-none"><TranslatedText text="Your Cart" /></h2>
                 {items.length > 0 && (
                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mt-1">
-                    {items.length} Product{items.length !== 1 ? "s" : ""}
+                    {language === 'ur' ? items.length.toLocaleString('ur-PK') : items.length} <TranslatedText text="Product(s)" as="span" />
                   </p>
                 )}
               </div>
@@ -178,25 +184,25 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                 <CheckCircle className="h-14 w-14 text-green-500" />
               </div>
               <div>
-                <h3 className="text-3xl font-display font-black text-foreground">Order Placed!</h3>
+                <h3 className="text-3xl font-display font-black text-foreground"><TranslatedText text="Order Placed!" /></h3>
                 <p className="text-muted-foreground text-sm mt-3 leading-relaxed max-w-xs mx-auto">
                   {customerName ? (
-                    <>Thank you, <strong className="text-foreground">{customerName}</strong>! Your wholesale order is pending review.</>
+                    <><TranslatedText text="Thank you" as="span" />, <strong className="text-foreground">{customerName}</strong>! <TranslatedText text="Your wholesale order is pending review." as="span" /></>
                   ) : (
-                    "Your order has been received securely by our dispatch team."
+                    <TranslatedText text="Your order has been received securely by our dispatch team." />
                   )}
                 </p>
               </div>
               <div className="w-full rounded-[2rem] bg-primary/5 border border-primary/20 p-6 space-y-4 shadow-sm my-2">
                 <div>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Order Reference</p>
-                  <p className="text-2xl font-mono font-black text-primary tracking-widest bg-white px-3 py-1 rounded-xl shadow-sm inline-block">{orderRef}</p>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1"><TranslatedText text="Order Reference" /></p>
+                  <p className="text-2xl font-mono font-black text-primary tracking-widest bg-white px-3 py-1 rounded-xl shadow-sm inline-block" dir="ltr">{orderRef}</p>
                 </div>
                 {deliveryDate && (
                   <div className="pt-4 border-t border-primary/10">
-                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Preferred Delivery</p>
-                    <p className="text-base font-bold text-foreground">
-                      {new Date(deliveryDate).toLocaleDateString("en-PK", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1"><TranslatedText text="Preferred Delivery" /></p>
+                    <p className="text-base font-bold text-foreground" dir="ltr">
+                      {new Date(deliveryDate).toLocaleDateString(language === 'ur' ? "ur-PK" : "en-PK", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
                     </p>
                   </div>
                 )}
@@ -205,13 +211,13 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                 href="/portal"
                 className="w-full h-14 rounded-full bg-primary text-white font-bold flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1 text-base mt-2"
               >
-                <ExternalLink className="h-5 w-5" /> View in My Portal
+                <ExternalLink className="h-5 w-5" /> <TranslatedText text="View in My Portal" />
               </a>
               <button
                 onClick={onClose}
                 className="text-sm font-bold text-muted-foreground hover:text-foreground transition-colors py-2"
               >
-                Close Cart
+                <TranslatedText text="Close Cart" />
               </button>
             </div>
           ) : (
@@ -223,8 +229,8 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                 <div className="w-24 h-24 rounded-full bg-white shadow-sm flex items-center justify-center mb-2">
                   <ShoppingBag className="h-10 w-10 text-muted-foreground/30" />
                 </div>
-                <p className="text-xl font-black text-foreground">Your cart is empty</p>
-                <p className="text-sm text-muted-foreground max-w-[250px]">Browse our premium wholesale catalog and add products.</p>
+                <p className="text-xl font-black text-foreground"><TranslatedText text="Your cart is empty" /></p>
+                <p className="text-sm text-muted-foreground max-w-[250px]"><TranslatedText text="Browse our premium wholesale catalog and add products." /></p>
                 <button
                   onClick={() => {
                     onClose();
@@ -232,7 +238,7 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                   }}
                   className="mt-4 px-8 py-3.5 rounded-full bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all shadow-lg hover:-translate-y-0.5"
                 >
-                  Browse Shop
+                  <TranslatedText text="Browse Shop" />
                 </button>
               </div>
             ) : (
@@ -250,11 +256,11 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                         <Package className="h-6 w-6 text-primary/30" />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0 pr-16">
-                      <p className="font-black text-foreground text-base truncate">{item.englishName}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 font-medium" dir="rtl">{item.itemName}</p>
+                    <div className="flex-1 min-w-0 pr-16" dir={dir === 'rtl' ? 'ltr' : 'ltr'}>
+                      <p className="font-black text-foreground text-base truncate">{language === 'ur' ? item.itemName : item.englishName}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 font-medium" dir="rtl">{language === 'ur' ? item.englishName : item.itemName}</p>
                     </div>
-                    <div className="absolute top-4 right-4 flex gap-1">
+                    <div className={`absolute top-4 flex gap-1 ${language === 'ur' ? 'left-4' : 'right-4'}`}>
                       <button
                         onClick={() => setEditingItem(item.itemId)}
                         className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-colors"
@@ -284,16 +290,16 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
                               <span className="px-2 py-0.5 rounded-full bg-primary text-white text-[10px] font-black uppercase">
-                                Grade {entry.grade}
+                                {language === 'ur' ? `گریڈ ${entry.grade}` : `Grade ${entry.grade}`}
                               </span>
-                              <span className="text-muted-foreground text-xs font-semibold">{entry.packing} bags</span>
+                              <span className="text-muted-foreground text-xs font-semibold">{entry.packing} {language === 'ur' ? 'بیگز' : 'bags'}</span>
                             </div>
-                            <span className="font-bold text-foreground">{Number(entry.kgs).toLocaleString()} kg</span>
+                            <span className="font-bold text-foreground" dir="ltr">{Number(entry.kgs).toLocaleString()} {language === 'ur' ? 'کلو' : 'kg'}</span>
                           </div>
                           {entryTotal > 0 && (
                             <div className="flex justify-between items-center pt-1 border-t border-border/30 mt-1">
-                              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Est. Cost</span>
-                              <span className="text-xs font-bold text-primary">Rs. {entryTotal.toLocaleString()}</span>
+                              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest"><TranslatedText text="Est. Cost" /></span>
+                              <span className="text-xs font-bold text-primary" dir="ltr">Rs. {entryTotal.toLocaleString()}</span>
                             </div>
                           )}
                         </div>
@@ -311,14 +317,14 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
               {/* Totals Summary */}
               <div className="bg-primary/5 rounded-[1.5rem] p-4 mb-4 border border-primary/10">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Total Weight</span>
-                  <span className="text-sm font-black text-foreground">{totalKgs.toLocaleString()} kg</span>
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest"><TranslatedText text="Total Weight" /></span>
+                  <span className="text-sm font-black text-foreground" dir="ltr">{totalKgs.toLocaleString()} {language === 'ur' ? 'کلو' : 'kg'}</span>
                 </div>
                 <div className="flex justify-between items-end pt-2 border-t border-primary/10">
                   <span className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-1">
-                    <Calculator className="h-3.5 w-3.5" /> Estimated Bill
+                    <Calculator className="h-3.5 w-3.5" /> <TranslatedText text="Estimated Bill" />
                   </span>
-                  <span className="text-2xl font-black text-primary leading-none">Rs. {totalBill.toLocaleString()}</span>
+                  <span className="text-2xl font-black text-primary leading-none" dir="ltr">Rs. {totalBill.toLocaleString()}</span>
                 </div>
               </div>
 
@@ -326,7 +332,7 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
               {isLoggedIn && userRole === "customer" && (
                 <div className="flex items-start gap-2 p-3 mb-4 rounded-xl bg-green-50 border border-green-200 text-xs text-green-800">
                   <CheckCircle className="h-4 w-4 shrink-0 mt-0.5 text-green-600" />
-                  <span className="font-medium leading-relaxed">Logged in as a registered customer. Your order will be placed instantly.</span>
+                  <span className="font-medium leading-relaxed"><TranslatedText text="Logged in as a registered customer. Your order will be placed instantly." /></span>
                 </div>
               )}
 
@@ -334,7 +340,7 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
               {!isLoggedIn && (
                 <div className="flex items-start gap-2 p-3 mb-4 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-800">
                   <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
-                  <span className="font-medium leading-relaxed">We'll verify your delivery details securely on the next step.</span>
+                  <span className="font-medium leading-relaxed"><TranslatedText text="We'll verify your delivery details securely on the next step." /></span>
                 </div>
               )}
 
@@ -345,7 +351,7 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                   <div className="space-y-3">
                     <div className="bg-background rounded-xl px-3 py-2 border border-input focus-within:ring-2 focus-within:ring-primary/30 transition-all">
                       <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-1">
-                        Delivery Date (Optional)
+                        <TranslatedText text="Delivery Date (Optional)" />
                       </label>
                       <input
                         type="date"
@@ -353,6 +359,7 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                         onChange={(e) => setDeliveryDate(e.target.value)}
                         min={new Date().toISOString().split("T")[0]}
                         className="w-full bg-transparent text-sm font-bold focus:outline-none"
+                        dir="ltr"
                       />
                     </div>
                     <button
@@ -361,13 +368,13 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                       className="w-full h-14 rounded-full bg-primary text-white font-black text-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-xl hover:-translate-y-1 hover:shadow-2xl disabled:opacity-60 disabled:hover:translate-y-0"
                     >
                       <ShoppingBag className="h-5 w-5" />
-                      {submitting ? "Placing Order..." : "Confirm Wholesale Order"}
+                      {submitting ? <TranslatedText text="Placing Order..." /> : <TranslatedText text="Confirm Wholesale Order" />}
                     </button>
                   </div>
                 ) : isLoggedIn && userRole !== "customer" ? (
                   // ── Staff/admin: can't place customer orders
                   <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 text-center font-bold">
-                    Staff accounts cannot place customer orders from the shop.
+                    <TranslatedText text="Staff accounts cannot place customer orders from the shop." />
                   </div>
                 ) : (
                   // ── Not logged in: guest checkout
@@ -375,7 +382,7 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                     onClick={() => setShowGuest(true)}
                     className="w-full h-14 rounded-full bg-primary text-white font-black text-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-xl hover:-translate-y-1 hover:shadow-2xl"
                   >
-                    Proceed to Checkout <ExternalLink className="h-5 w-5 ml-1" />
+                    <TranslatedText text="Proceed to Checkout" /> <ExternalLink className={`h-5 w-5 ${language === 'ur' ? 'mr-1 rotate-180' : 'ml-1'}`} />
                   </button>
                 )}
                 
@@ -383,7 +390,7 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                   onClick={() => { clearCart(); }}
                   className="w-full text-xs font-bold text-muted-foreground hover:text-destructive transition-colors text-center py-2 underline underline-offset-4 decoration-border hover:decoration-destructive"
                 >
-                  Clear entire cart
+                  <TranslatedText text="Clear entire cart" />
                 </button>
               </div>
             </div>

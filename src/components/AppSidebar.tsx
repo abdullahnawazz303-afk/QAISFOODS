@@ -43,10 +43,13 @@ const websiteNav = [
   { title: "Online Guest Orders",  url: "/guest-orders",   icon: UserX },
 ];
 
+import { useActiveLanguage } from "@/hooks/useActiveLanguage";
+
 export function AppSidebar() {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const location  = useLocation();
+  const activeLang = useActiveLanguage();
 
   // ── Live pending counts for badges
   const [badges, setBadges] = useState<{ requests: number, bookings: number, orders: number, guestOrders: number, cheques: number }>({
@@ -115,7 +118,7 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon" className="overflow-hidden">
+    <Sidebar collapsible="icon" side={activeLang === "ur" ? "right" : "left"} className="overflow-hidden">
       <SidebarHeader className="p-4 border-b border-sidebar-border relative">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center">

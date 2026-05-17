@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCartStore } from "@/stores/cartStore";
 import { toast } from "sonner";
 import { notifyAdminWhatsApp } from "@/lib/whatsapp";
+import { TranslatedText } from "@/components/TranslatedText";
+import { useUIStore } from "@/stores/uiStore";
 
 interface GuestCheckoutModalProps {
   onClose: () => void;
@@ -13,6 +15,8 @@ interface GuestCheckoutModalProps {
 
 export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalProps) {
   const { items } = useCartStore();
+  const { language } = useUIStore();
+  const dir = language === 'ur' ? 'rtl' : 'ltr';
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -27,7 +31,7 @@ export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalPro
 
   const shareLocation = () => {
     if (!navigator.geolocation) {
-      toast.error("Location not supported on this device");
+      toast.error(language === 'ur' ? "اس ڈیوائس پر لوکیشن سپورٹ نہیں ہے" : "Location not supported on this device");
       return;
     }
     setLocating(true);
@@ -36,10 +40,10 @@ export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalPro
         setLat(pos.coords.latitude);
         setLng(pos.coords.longitude);
         setLocating(false);
-        toast.success("Location captured!");
+        toast.success(language === 'ur' ? "لوکیشن حاصل کر لی گئی!" : "Location captured!");
       },
       () => {
-        toast.error("Could not get location. Please enter address manually.");
+        toast.error(language === 'ur' ? "لوکیشن حاصل نہیں کی جا سکی۔ براہ کرم دستی طور پر پتہ درج کریں۔" : "Could not get location. Please enter address manually.");
         setLocating(false);
       }
     );
@@ -123,7 +127,7 @@ export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalPro
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" dir={dir}>
         <motion.div
           className="absolute inset-0 bg-black/60 backdrop-blur-sm"
           initial={{ opacity: 0 }}
@@ -145,28 +149,28 @@ export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalPro
                 <CheckCircle className="h-10 w-10 text-green-600" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-foreground">Order Placed!</h2>
+                <h2 className="text-2xl font-bold text-foreground"><TranslatedText text="Order Placed!" /></h2>
                 <p className="text-muted-foreground text-sm mt-2">
-                  Your order has been received. We will contact you at <strong>{phone}</strong>.
+                  <TranslatedText text="Your order has been received. We will contact you at" /> <strong dir="ltr">{phone}</strong>.
                 </p>
               </div>
               {/* Order Ref */}
               <div className="w-full rounded-xl bg-primary/5 border border-primary/20 p-4 space-y-1">
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Your Order Reference</p>
-                <p className="text-2xl font-mono font-bold text-primary tracking-wider">{orderRef}</p>
-                <p className="text-xs text-muted-foreground">Save this to track your order status</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider"><TranslatedText text="Your Order Reference" /></p>
+                <p className="text-2xl font-mono font-bold text-primary tracking-wider" dir="ltr">{orderRef}</p>
+                <p className="text-xs text-muted-foreground"><TranslatedText text="Save this to track your order status" /></p>
               </div>
               <a
                 href={`/track-order?phone=${encodeURIComponent(phone)}&ref=${encodeURIComponent(orderRef)}`}
                 className="w-full h-11 rounded-full bg-primary text-white font-bold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors text-sm"
               >
-                <ExternalLink className="h-4 w-4" /> Track My Order
+                <ExternalLink className="h-4 w-4" /> <TranslatedText text="Track My Order" />
               </a>
               <button
                 onClick={onClose}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                Close
+                <TranslatedText text="Close" />
               </button>
             </div>
           ) : (
@@ -174,8 +178,8 @@ export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalPro
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b">
                 <div>
-                  <h2 className="text-lg font-bold">Checkout Details</h2>
-                  <p className="text-xs text-muted-foreground">Fill in your details to place the order</p>
+                  <h2 className="text-lg font-bold"><TranslatedText text="Checkout Details" /></h2>
+                  <p className="text-xs text-muted-foreground"><TranslatedText text="Fill in your details to place the order" /></p>
                 </div>
                 <button
                   onClick={onClose}
@@ -189,13 +193,13 @@ export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalPro
                 {/* Name */}
                 <div>
                   <label className="text-sm font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
-                    <User className="h-3.5 w-3.5 text-primary" /> Full Name *
+                    <User className="h-3.5 w-3.5 text-primary" /> <TranslatedText text="Full Name" /> *
                   </label>
                   <input
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Ahmad Ali"
+                    placeholder={language === 'ur' ? "مثال: احمد علی" : "e.g. Ahmad Ali"}
                     className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
                 </div>
@@ -203,41 +207,43 @@ export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalPro
                 {/* Phone */}
                 <div>
                   <label className="text-sm font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
-                    <Phone className="h-3.5 w-3.5 text-primary" /> Phone Number *
+                    <Phone className="h-3.5 w-3.5 text-primary" /> <TranslatedText text="Phone Number" /> *
                   </label>
                   <input
                     required
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="e.g. 0300-1234567"
-                    className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    placeholder={language === 'ur' ? "0300-1234567" : "e.g. 0300-1234567"}
+                    className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-left"
+                    dir="ltr"
                   />
                 </div>
 
                 {/* Email */}
                 <div>
                   <label className="text-sm font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5 text-primary" /> Email (optional)
+                    <Mail className="h-3.5 w-3.5 text-primary" /> <TranslatedText text="Email (optional)" />
                   </label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="e.g. ahmad@example.com"
-                    className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    placeholder={language === 'ur' ? "ahmad@example.com" : "e.g. ahmad@example.com"}
+                    className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-left"
+                    dir="ltr"
                   />
                 </div>
 
                 {/* Address */}
                 <div>
                   <label className="text-sm font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
-                    <Home className="h-3.5 w-3.5 text-primary" /> Address (optional)
+                    <Home className="h-3.5 w-3.5 text-primary" /> <TranslatedText text="Address (optional)" />
                   </label>
                   <textarea
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Street, City, Province"
+                    placeholder={language === 'ur' ? "گلی، شہر، صوبہ" : "Street, City, Province"}
                     rows={2}
                     className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                   />
@@ -246,19 +252,19 @@ export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalPro
                 {/* Location */}
                 <div>
                   <label className="text-sm font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 text-primary" /> Your Location (optional)
+                    <MapPin className="h-3.5 w-3.5 text-primary" /> <TranslatedText text="Your Location (optional)" />
                   </label>
                   {lat && lng ? (
                     <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
                       <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />
-                      <span className="flex-1">Location captured: {lat.toFixed(4)}, {lng.toFixed(4)}</span>
+                      <span className="flex-1"><TranslatedText text="Location captured" as="span" />: <span dir="ltr">{lat.toFixed(4)}, {lng.toFixed(4)}</span></span>
                       <a
                         href={`https://www.google.com/maps?q=${lat},${lng}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-green-700 underline text-xs"
                       >
-                        View
+                        <TranslatedText text="View" />
                       </a>
                     </div>
                   ) : (
@@ -269,25 +275,25 @@ export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalPro
                       className="w-full h-10 rounded-lg border-2 border-dashed border-primary/30 text-primary text-sm font-semibold flex items-center justify-center gap-2 hover:border-primary/60 hover:bg-primary/5 transition-colors disabled:opacity-60"
                     >
                       {locating ? (
-                        <><Loader2 className="h-4 w-4 animate-spin" /> Locating...</>
+                        <><Loader2 className="h-4 w-4 animate-spin" /> <TranslatedText text="Locating..." /></>
                       ) : (
-                        <><MapPin className="h-4 w-4" /> Share My Location</>
+                        <><MapPin className="h-4 w-4" /> <TranslatedText text="Share My Location" /></>
                       )}
                     </button>
                   )}
                   <p className="text-xs text-muted-foreground mt-1">
-                    Your location helps us plan delivery. This is optional.
+                    <TranslatedText text="Your location helps us plan delivery. This is optional." />
                   </p>
                 </div>
 
                 {/* Order summary */}
                 <div className="rounded-xl bg-muted/40 p-3 space-y-1.5">
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Order Summary</p>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide"><TranslatedText text="Order Summary" /></p>
                   {items.map((item) => (
                     <div key={item.itemId} className="text-sm flex justify-between">
-                      <span className="text-foreground font-medium">{item.englishName}</span>
-                      <span className="text-muted-foreground">
-                        {item.entries.reduce((s, e) => s + Number(e.kgs), 0)} kg
+                      <span className="text-foreground font-medium">{language === 'ur' ? item.itemName : item.englishName}</span>
+                      <span className="text-muted-foreground" dir="ltr">
+                        {item.entries.reduce((s, e) => s + Number(e.kgs), 0)} {language === 'ur' ? 'کلو' : 'kg'}
                       </span>
                     </div>
                   ))}
@@ -299,7 +305,7 @@ export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalPro
                     onClick={onClose}
                     className="flex-1 h-11 rounded-full border border-border text-foreground font-semibold hover:bg-muted transition-colors"
                   >
-                    Cancel
+                    <TranslatedText text="Cancel" />
                   </button>
                   <button
                     type="submit"
@@ -307,9 +313,9 @@ export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalPro
                     className="flex-1 h-11 rounded-full bg-primary text-white font-bold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-lg disabled:opacity-60"
                   >
                     {submitting ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" /> Placing...</>
+                      <><Loader2 className="h-4 w-4 animate-spin" /> <TranslatedText text="Placing..." /></>
                     ) : (
-                      "Place Order"
+                      <TranslatedText text="Place Order" />
                     )}
                   </button>
                 </div>

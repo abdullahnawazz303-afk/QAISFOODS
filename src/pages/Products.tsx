@@ -84,7 +84,7 @@ export default function Products() {
     <div className="min-h-screen overflow-x-hidden">
 
       {/* ── Hero Banner ───────────────────────────── */}
-      <section className="relative bg-primary py-20 md:py-28 overflow-hidden">
+      <section className="relative bg-primary dark:bg-card py-20 md:py-28 overflow-hidden border-b dark:border-border/10">
         {/* Decorative background elements */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-white/20 blur-3xl -translate-y-1/2 translate-x-1/3" />
@@ -99,19 +99,19 @@ export default function Products() {
         >
           <motion.span
             variants={fadeSlide("up")}
-            className="inline-block text-xs font-semibold text-primary-foreground/80 uppercase tracking-widest mb-4 px-4 py-1.5 rounded-full border border-white/20 bg-white/10"
+            className="inline-block text-xs font-semibold text-primary-foreground dark:text-primary uppercase tracking-widest mb-4 px-4 py-1.5 rounded-full border border-white/20 dark:border-primary/20 bg-white/10 dark:bg-primary/5"
           >
             Product Catalogue
           </motion.span>
           <motion.h1
             variants={fadeSlide("up")}
-            className="text-4xl md:text-5xl font-bold text-primary-foreground mb-4 tracking-tight uppercase"
+            className="text-4xl md:text-5xl font-bold text-primary-foreground dark:text-foreground mb-4 tracking-tight uppercase"
           >
             Our Premium Products
           </motion.h1>
           <motion.p 
             variants={fadeSlide("up")} 
-            className="text-lg text-primary-foreground/80 max-w-xl mx-auto leading-relaxed"
+            className="text-lg text-primary-foreground/80 dark:text-muted-foreground max-w-xl mx-auto leading-relaxed"
           >
             Factory-cleaned, machine-graded lentils and pulses — available for wholesale in bulk quantities across Pakistan.
           </motion.p>

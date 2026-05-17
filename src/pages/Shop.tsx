@@ -7,6 +7,8 @@ import { ProductCard, type ShopItem } from "@/components/ProductCard";
 import { Link } from "react-router-dom";
 import { useCartStore } from "@/stores/cartStore";
 import { CartDrawer } from "@/components/CartDrawer";
+import { TranslatedText } from "@/components/TranslatedText";
+import { useUIStore } from "@/stores/uiStore";
 
 const CATEGORIES = [
   { key: "all",    label: "All Products",   urdu: "سب" },
@@ -24,6 +26,9 @@ export default function Shop() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [cartOpen, setCartOpen] = useState(false);
+
+  const { language } = useUIStore();
+  const dir = language === 'ur' ? 'rtl' : 'ltr';
 
   const { items: cartItems } = useCartStore();
   const { rates, fetchRates } = useRateCardStore();
@@ -58,15 +63,15 @@ export default function Shop() {
   const isInCart = (id: string) => cartItems.some((i) => i.itemId === id);
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 overflow-x-hidden w-full max-w-full" dir={dir}>
       {/* Page Header Banner (Minimalist) */}
       <section className="bg-background pt-8 pb-4">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           {/* Breadcrumb */}
           <nav className="text-sm font-medium text-muted-foreground mb-4 flex items-center gap-2">
-            <Link to="/" className="hover:text-primary transition-colors">Home</Link>
+            <Link to="/" className="hover:text-primary transition-colors"><TranslatedText text="Home" /></Link>
             <span className="text-xs">»</span>
-            <span className="text-foreground">Products</span>
+            <span className="text-foreground"><TranslatedText text="Products" /></span>
           </nav>
           
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -76,7 +81,7 @@ export default function Shop() {
               transition={{ duration: 0.5 }}
               className="text-4xl md:text-5xl font-display font-black text-foreground tracking-tight"
             >
-              Products
+              <TranslatedText text="Products" />
             </motion.h1>
 
             {/* Cart button in header */}
@@ -87,7 +92,7 @@ export default function Shop() {
               className="relative flex items-center gap-3 px-6 py-3 rounded-full bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors shadow-md"
             >
               <ShoppingBag className="h-5 w-5" />
-              View Cart
+              <TranslatedText text="View Cart" />
               {cartCount > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-red-500 text-white text-xs font-black flex items-center justify-center shadow-md border-2 border-white">
                   {cartCount}
@@ -108,8 +113,8 @@ export default function Shop() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search products..."
-              className="w-full h-14 pl-12 pr-12 rounded-full border-2 border-border bg-white text-base focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-sm transition-all font-medium"
+              placeholder={language === 'ur' ? "مصنوعات تلاش کریں..." : "Search products..."}
+              className="w-full h-14 pl-12 pr-12 rounded-full border-2 border-border bg-white dark:bg-card text-base focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-sm transition-all font-medium"
             />
             {search && (
               <button
@@ -130,11 +135,10 @@ export default function Shop() {
                 className={`flex-shrink-0 px-6 py-3 rounded-full text-sm font-bold transition-all border-2 flex items-center gap-2 ${
                   activeCategory === cat.key
                     ? "bg-primary text-white border-primary shadow-md"
-                    : "bg-white text-foreground border-border hover:border-primary/40 hover:bg-primary/5"
+                    : "bg-white dark:bg-card text-foreground border-border hover:border-primary/40 hover:bg-primary/5"
                 }`}
               >
-                {cat.label}
-                <span className={`opacity-60 text-xs font-normal ${activeCategory === cat.key ? "text-white" : "text-muted-foreground"}`} dir="rtl">{cat.urdu}</span>
+                {language === 'ur' ? cat.urdu : cat.label}
               </button>
             ))}
           </div>
@@ -150,7 +154,7 @@ export default function Shop() {
           {/* Results count */}
           <div className="flex items-center justify-between mb-8">
             <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
-              {loading ? "Loading Catalog..." : `Showing ${filtered.length} Product${filtered.length !== 1 ? "s" : ""}`}
+              {loading ? <TranslatedText text="Loading Catalog..." /> : <TranslatedText text={`Showing ${filtered.length} Product${filtered.length !== 1 ? "s" : ""}`} />}
             </p>
           </div>
 
@@ -161,17 +165,17 @@ export default function Shop() {
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-32 text-center gap-4 bg-white rounded-[3rem] border shadow-sm">
+            <div className="flex flex-col items-center justify-center py-32 text-center gap-4 bg-white dark:bg-card rounded-[3rem] border shadow-sm">
               <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
                 <SlidersHorizontal className="h-10 w-10 text-primary" />
               </div>
-              <p className="text-2xl font-display font-black text-foreground">No products found</p>
-              <p className="text-base text-muted-foreground max-w-md">Try adjusting your search or category filter to find what you're looking for.</p>
+              <p className="text-2xl font-display font-black text-foreground"><TranslatedText text="No products found" /></p>
+              <p className="text-base text-muted-foreground max-w-md"><TranslatedText text="Try adjusting your search or category filter to find what you're looking for." /></p>
               <button
                 onClick={() => { setSearch(""); setActiveCategory("all"); }}
                 className="mt-4 px-8 py-3 rounded-full bg-primary text-white font-bold hover:bg-primary/90 transition-colors shadow-lg"
               >
-                Clear all filters
+                <TranslatedText text="Clear all filters" />
               </button>
             </div>
           ) : (

@@ -7,24 +7,31 @@ import { useCartStore } from "@/stores/cartStore";
 import { CartDrawer } from "@/components/CartDrawer";
 import { AnimatePresence } from "framer-motion";
 import { QfLogo } from "@/components/QfLogo";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { useUIStore } from "@/stores/uiStore";
 
-const navLinks = [
-  { label: "Shop", to: "/shop" },
-  { label: "Track Order", to: "/track-order" },
-  { label: "About", to: "/about" },
-  { label: "Contact", to: "/contact" },
-];
+import { useTranslation } from "react-i18next";
 
 export function PublicNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const location = useLocation();
   const cartCount = useCartStore((s) => s.items.length);
+  const { language } = useUIStore();
+  const { t } = useTranslation();
+
+  const navLinks = [
+    { label: t("shop"), to: "/shop" },
+    { label: t("track_order"), to: "/track-order" },
+    { label: t("about"), to: "/about" },
+    { label: t("contact"), to: "/contact" },
+  ];
 
   return (
     <>
       <div className="sticky top-0 z-50">
-        <header className="bg-primary text-primary-foreground relative shadow-md">
+        <header className="bg-primary dark:bg-card text-primary-foreground dark:text-foreground relative shadow-md border-b dark:border-border/10">
           <div className="max-w-7xl mx-auto flex h-24 items-center justify-between px-4 md:px-8">
             
             {/* Overlapping Logo Container */}
@@ -36,24 +43,25 @@ export function PublicNavbar() {
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }
                 }}
-                className="absolute top-4 left-0 flex items-center z-10 group bg-white rounded-br-[2rem] rounded-tr-[2rem] px-7 py-4 border-r border-y border-border/50 shadow-xl transition-transform hover:translate-x-1 hover:shadow-2xl"
+                className="absolute top-4 left-0 flex items-center z-10 group bg-white dark:bg-card rounded-br-[2rem] rounded-tr-[2rem] px-5 py-2.5 md:px-7 md:py-3.5 border-r border-y border-border/50 dark:border-border shadow-xl transition-transform hover:translate-x-1 hover:shadow-2xl"
               >
                 <QfLogo className="group-hover:opacity-90 transition-opacity" />
               </Link>
             </div>
 
             {/* Desktop nav */}
-            <nav className="hidden lg:flex items-center gap-8 pl-8">
+            <nav className="hidden lg:flex items-center gap-4 xl:gap-8 pl-5 xl:pl-10">
               {navLinks.map((l) => (
                 <Link
                   key={l.to}
                   to={l.to}
                   className={cn(
-                    "text-sm font-bold uppercase tracking-widest transition-all relative py-2",
+                    "text-sm font-bold uppercase tracking-wider xl:tracking-widest transition-all relative py-2 shrink-0",
                     location.pathname === l.to
                       ? "text-white"
                       : "text-white/70 hover:text-white"
                   )}
+                  style={language === 'ur' ? { fontFamily: "system-ui, -apple-system, sans-serif", fontSize: '14px' } : {}}
                 >
                   {l.label}
                   {location.pathname === l.to && (
@@ -65,6 +73,11 @@ export function PublicNavbar() {
 
             {/* Right Actions */}
             <div className="hidden lg:flex items-center gap-5">
+              <div className="flex items-center text-white/90">
+                <ThemeSwitcher className="hover:bg-black/20 hover:text-white" />
+                <LanguageSwitcher className="hover:bg-black/20 hover:text-white" />
+              </div>
+
               {/* Cart icon */}
               <button
                 onClick={() => setCartOpen(true)}
@@ -80,8 +93,8 @@ export function PublicNavbar() {
               </button>
 
               <Link to="/login">
-                <Button size="default" className="rounded-full bg-white text-primary hover:bg-white/95 font-black text-xs uppercase tracking-widest px-8 py-6 h-auto shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 active:translate-y-0">
-                  Login
+                <Button size="default" className="rounded-full bg-white dark:bg-primary text-primary dark:text-white hover:bg-white/95 dark:hover:bg-primary/90 font-black text-xs uppercase tracking-widest px-8 py-6 h-auto shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 active:translate-y-0">
+                  {t('login')}
                 </Button>
               </Link>
             </div>
@@ -117,11 +130,11 @@ export function PublicNavbar() {
               xmlns="http://www.w3.org/2000/svg" 
               viewBox="0 0 1200 120" 
               preserveAspectRatio="none" 
-              className="relative block w-full h-[22px] drop-shadow-md"
+              className="relative block w-full h-[22px] drop-shadow-md text-primary dark:text-card"
             >
               <path 
                 d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" 
-                className="fill-primary"
+                className="fill-current"
               ></path>
             </svg>
           </div>
@@ -130,7 +143,18 @@ export function PublicNavbar() {
         {/* Mobile menu */}
         <AnimatePresence>
           {mobileOpen && (
-            <div className="lg:hidden absolute top-[100%] left-0 w-full bg-primary border-t border-white/10 px-5 pb-6 pt-4 space-y-2 shadow-2xl z-40 rounded-b-3xl">
+            <div className="lg:hidden absolute top-[100%] left-0 w-full bg-primary dark:bg-card border-t border-white/10 dark:border-border/30 px-5 pb-6 pt-4 space-y-2 shadow-2xl z-40 rounded-b-3xl">
+              {/* Theme & Language Switchers for Mobile */}
+              <div className="flex items-center justify-between border-b border-white/10 dark:border-border/30 pb-4 mb-4 text-white/90">
+                <span className="text-xs font-black uppercase tracking-widest text-white/60 dark:text-muted-foreground">
+                  {language === 'ur' ? 'ترجیحات' : 'Settings'}
+                </span>
+                <div className="flex items-center gap-2">
+                  <ThemeSwitcher className="hover:bg-white/20 text-white hover:text-white" />
+                  <LanguageSwitcher className="hover:bg-white/20 text-white hover:text-white" />
+                </div>
+              </div>
+
               {navLinks.map((l) => (
                 <Link
                   key={l.to}
@@ -139,16 +163,17 @@ export function PublicNavbar() {
                   className={cn(
                     "block py-3 px-4 text-sm font-bold uppercase tracking-wider transition-colors rounded-xl",
                     location.pathname === l.to 
-                      ? "bg-white/20 text-white" 
-                      : "text-white/80 hover:bg-white/10 hover:text-white"
+                      ? "bg-white/20 dark:bg-primary/20 text-white" 
+                      : "text-white/80 hover:bg-white/10 dark:hover:bg-primary/10 hover:text-white"
                   )}
+                  style={language === 'ur' ? { fontFamily: "system-ui, -apple-system, sans-serif" } : {}}
                 >
                   {l.label}
                 </Link>
               ))}
               <Link to="/login" onClick={() => setMobileOpen(false)} className="block mt-6">
-                <Button size="default" className="w-full bg-white text-primary hover:bg-gray-100 font-bold py-6 rounded-full shadow-lg">
-                  Login to Portal
+                <Button size="default" className="w-full bg-white dark:bg-primary text-primary dark:text-white hover:bg-gray-100 dark:hover:bg-primary/95 font-bold py-6 rounded-full shadow-lg">
+                  {t('login')}
                 </Button>
               </Link>
             </div>

@@ -10,6 +10,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { TranslatedText } from "@/components/TranslatedText";
+import { useUIStore } from "@/stores/uiStore";
 
 const stats = [
   { label: "Years in Business", value: "15+" },
@@ -80,14 +82,17 @@ const fadeUp = {
 };
 
 export default function About() {
+  const { language } = useUIStore();
+  const dir = language === 'ur' ? 'rtl' : 'ltr';
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-hidden w-full max-w-full" dir={dir}>
 
       {/* Hero */}
       <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0">
           <img src={aboutImg} alt="Our factory" className="w-full h-full object-cover" loading="eager" />
-          <div className="absolute inset-0 bg-gradient-to-b from-foreground/80 via-foreground/60 to-foreground/85" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-black/85" />
         </div>
         <motion.div
           className="relative text-center px-4 py-28 md:py-40"
@@ -96,19 +101,19 @@ export default function About() {
           transition={{ duration: 0.6 }}
         >
           <span className="inline-block text-xs font-black text-white uppercase tracking-[0.25em] mb-5 px-6 py-2 rounded-full bg-primary shadow-xl">
-            Since 2010
+            <TranslatedText text="Since 2010" />
           </span>
           <h1 className="text-5xl md:text-6xl lg:text-8xl font-display font-bold text-white mb-5 tracking-tight uppercase leading-[1.0]">
-            About Our Factory
+            <TranslatedText text="About Our Factory" />
           </h1>
           <p className="text-lg text-white/70 max-w-2xl mx-auto leading-relaxed">
-            A modern lentil processing and packaging facility in the heart of Pakistan, serving wholesale markets with premium quality products.
+            <TranslatedText text="A modern lentil processing and packaging facility in the heart of Pakistan, serving wholesale markets with premium quality products." />
           </p>
         </motion.div>
       </section>
 
       {/* Stats */}
-      <section className="bg-primary/5 py-8 md:py-10 border-b border-border">
+      <section className="bg-primary/5 dark:bg-card/50 py-8 md:py-10 border-b border-border">
         <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 divide-x divide-border">
           {stats.map((s, i) => (
             <motion.div
@@ -119,8 +124,12 @@ export default function About() {
               viewport={{ once: true }}
               transition={{ delay: i * 0.1, duration: 0.4 }}
             >
-              <div className="text-3xl md:text-5xl font-display font-bold text-primary">{s.value}</div>
-              <div className="text-xs md:text-sm text-muted-foreground mt-1 font-medium uppercase tracking-widest">{s.label}</div>
+              <div className="text-3xl md:text-5xl font-display font-bold text-primary">
+                <TranslatedText text={s.value} />
+              </div>
+              <div className="text-xs md:text-sm text-muted-foreground mt-1 font-medium uppercase tracking-widest">
+                <TranslatedText text={s.label} />
+              </div>
             </motion.div>
           ))}
         </div>
@@ -136,8 +145,12 @@ export default function About() {
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            <span className="text-xs font-bold text-primary uppercase tracking-[0.2em]">Our Core</span>
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-foreground mt-2 uppercase leading-tight">What Drives Us</h2>
+            <span className="text-xs font-bold text-primary uppercase tracking-[0.2em]">
+              <TranslatedText text="Our Core" />
+            </span>
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-foreground mt-2 uppercase leading-tight">
+              <TranslatedText text="What Drives Us" />
+            </h2>
             <div className="mt-4 h-1 w-20 bg-primary" />
           </motion.div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -156,8 +169,12 @@ export default function About() {
                       <v.icon className="h-7 w-7 text-primary" />
                     </div>
                     <div>
-                      <h3 className="font-display font-bold text-xl text-foreground mb-2 uppercase tracking-wide">{v.title}</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{v.desc}</p>
+                      <h3 className="font-display font-bold text-xl text-foreground mb-2 uppercase tracking-wide">
+                        <TranslatedText text={v.title} />
+                      </h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        <TranslatedText text={v.desc} />
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -168,7 +185,7 @@ export default function About() {
       </section>
 
       {/* FAQs Section */}
-      <section className="py-20 md:py-28 bg-primary/5">
+      <section className="py-20 md:py-28 bg-primary/5 dark:bg-muted/10">
         <div className="max-w-4xl mx-auto px-4 md:px-8">
           <motion.div
             className="mb-14 text-center"
@@ -177,9 +194,15 @@ export default function About() {
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            <span className="text-xs font-bold text-primary uppercase tracking-[0.2em]">Help Center</span>
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-foreground mt-2 uppercase leading-tight">Frequently Asked Questions</h2>
-            <p className="text-muted-foreground mt-4 max-w-xl mx-auto">Common questions about our wholesale operations, delivery, and quality control.</p>
+            <span className="text-xs font-bold text-primary uppercase tracking-[0.2em]">
+              <TranslatedText text="Help Center" />
+            </span>
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-foreground mt-2 uppercase leading-tight">
+              <TranslatedText text="Frequently Asked Questions" />
+            </h2>
+            <p className="text-muted-foreground mt-4 max-w-xl mx-auto">
+              <TranslatedText text="Common questions about our wholesale operations, delivery, and quality control." />
+            </p>
           </motion.div>
 
           <div className="space-y-10">
@@ -193,7 +216,9 @@ export default function About() {
               >
                 <div className="flex items-center gap-4 mb-6">
                   <HelpCircle className="h-5 w-5 text-primary" />
-                  <h3 className="text-xl font-display font-bold text-foreground uppercase tracking-wide">{cat.category}</h3>
+                  <h3 className="text-xl font-display font-bold text-foreground uppercase tracking-wide">
+                    <TranslatedText text={cat.category} />
+                  </h3>
                 </div>
 
                 <Accordion type="single" collapsible className="w-full space-y-3">
@@ -201,13 +226,13 @@ export default function About() {
                     <AccordionItem
                       key={fi}
                       value={`cat-${ci}-item-${fi}`}
-                      className="border border-border bg-white rounded-2xl px-6 transition-all data-[state=open]:border-primary/40 data-[state=open]:shadow-md"
+                      className="border border-border bg-white dark:bg-card rounded-2xl px-6 transition-all data-[state=open]:border-primary/40 data-[state=open]:shadow-md"
                     >
-                      <AccordionTrigger className="text-left font-bold text-base md:text-lg py-5 hover:text-primary no-underline hover:no-underline transition-colors">
-                        {faq.question}
+                      <AccordionTrigger className="text-left font-bold text-base md:text-lg py-5 hover:text-primary no-underline hover:no-underline transition-colors" style={language === 'ur' ? { fontFamily: "Noto Nastaliq Urdu, 'Jameel Noori Nastaleeq', serif" } : {}}>
+                        <TranslatedText text={faq.question} as="span" />
                       </AccordionTrigger>
                       <AccordionContent className="text-muted-foreground leading-relaxed text-sm md:text-base pb-5">
-                        {faq.answer}
+                        <TranslatedText text={faq.answer} as="span" />
                       </AccordionContent>
                     </AccordionItem>
                   ))}
@@ -217,10 +242,12 @@ export default function About() {
           </div>
 
           <div className="mt-16 text-center">
-            <p className="text-sm text-muted-foreground mb-6">Still have a question that isn't answered here?</p>
+            <p className="text-sm text-muted-foreground mb-6">
+              <TranslatedText text="Still have a question that isn't answered here?" />
+            </p>
             <Link to="/contact">
-              <Button size="lg" className="rounded-full bg-primary text-white hover:bg-primary/90 font-bold px-10 shadow-lg">
-                Contact Our Support <ArrowRight className="ml-2 h-4 w-4" />
+              <Button size="lg" className="rounded-full bg-primary text-white hover:bg-primary/90 font-bold px-10 shadow-lg flex items-center">
+                <TranslatedText text="Contact Our Support" /> <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </div>

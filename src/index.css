@@ -115,6 +115,165 @@
 
   body {
     @apply bg-background text-foreground font-sans;
+    transition: background-color 0.35s cubic-bezier(0.4, 0, 0.2, 1), color 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Urdu Styling Base */
+  .ur-text, 
+  [lang="ur"], 
+  [dir="rtl"] h1, 
+  [dir="rtl"] h2, 
+  [dir="rtl"] h3, 
+  [dir="rtl"] h4, 
+  [dir="rtl"] h5, 
+  [dir="rtl"] h6,
+  [dir="rtl"] .font-urdu {
+    font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif !important;
+    letter-spacing: normal !important;
+    word-spacing: normal !important;
+  }
+
+  [dir="rtl"] {
+    font-size: 100%;
+    font-weight: 500;
+  }
+
+  /* When RTL is applied, ensure specific typography classes also adapt nicely if needed */
+  /* Optimized, highly legible static scaling for Pakistani Urdu readers across all screen sizes */
+  [dir="rtl"] .text-xs {
+    font-size: 0.825rem !important;
+    line-height: 1.35rem !important;
+  }
+
+  [dir="rtl"] .text-sm {
+    font-size: 0.925rem !important;
+    line-height: 1.45rem !important;
+  }
+  
+  [dir="rtl"] .text-base {
+    font-size: 1.025rem !important;
+    line-height: 1.55rem !important;
+  }
+  
+  [dir="rtl"] .text-lg {
+    font-size: 1.125rem !important;
+    line-height: 1.65rem !important;
+  }
+  
+  [dir="rtl"] .text-xl {
+    font-size: 1.25rem !important;
+    line-height: 1.75rem !important;
+  }
+
+  [dir="rtl"] .text-2xl {
+    font-size: 1.45rem !important;
+    line-height: 1.95rem !important;
+  }
+
+  [dir="rtl"] .text-3xl {
+    font-size: 1.65rem !important;
+    line-height: 2.25rem !important;
+  }
+
+  [dir="rtl"] .text-4xl {
+    font-size: 1.95rem !important;
+    line-height: 2.65rem !important;
+  }
+
+  [dir="rtl"] .text-5xl {
+    font-size: 2.35rem !important;
+    line-height: 3.15rem !important;
+  }
+
+  /* Urdu Boundary & Layout Spacing Enhancements (RTL Mode) */
+  [dir="rtl"] .card:not(.product-card), 
+  [dir="rtl"] .bg-card:not(.product-card) {
+    padding: 1.5rem 1.5rem 1.75rem 1.5rem !important; /* generous card padding to prevent Nastaliq clip */
+    border: 1px solid rgba(16, 185, 129, 0.25) !important; /* premium visible emerald border */
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 8px -1px rgba(0, 0, 0, 0.02) !important;
+    background: hsl(var(--card) / 0.98) !important; /* theme-adaptive background supporting light & dark modes beautifully */
+    backdrop-filter: blur(8px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+  
+  [dir="rtl"] .card:not(.product-card):hover, 
+  [dir="rtl"] .bg-card:not(.product-card):hover {
+    border-color: rgba(16, 185, 129, 0.45) !important; /* high-impact green border hover glow */
+    box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.12), 0 8px 16px -6px rgba(0, 0, 0, 0.03) !important;
+    transform: translateY(-2.5px) !important;
+  }
+
+  /* Secure comfortable vertical breathing room for Urdu Nastaliq input characters */
+  [dir="rtl"] input,
+  [dir="rtl"] textarea,
+  [dir="rtl"] [role="combobox"],
+  [dir="rtl"] select {
+    padding-top: 0.6rem !important;
+    padding-bottom: 0.6rem !important;
+    height: auto !important;
+    min-height: 2.85rem !important;
+    line-height: 1.5 !important;
+  }
+  
+  [dir="rtl"] button:not([size="icon"]):not([class*="h-7"]):not([class*="h-8"]) {
+    padding-top: 0.6rem !important;
+    padding-bottom: 0.6rem !important;
+    height: auto !important;
+    min-height: 2.65rem !important;
+  }
+  
+  [dir="rtl"] .space-y-4 > * + * {
+    margin-top: 1.5rem !important;
+  }
+  
+  [dir="rtl"] .space-y-2 > * + * {
+    margin-top: 0.95rem !important;
+  }
+  
+  [dir="rtl"] .space-y-1 > * + * {
+    margin-top: 0.75rem !important;
+  }
+  
+  [dir="rtl"] .gap-6 {
+    gap: 2rem !important;
+  }
+
+  [dir="rtl"] .gap-4 {
+    gap: 1.75rem !important;
+  }
+  
+  [dir="rtl"] .gap-2 {
+    gap: 0.85rem !important;
+  }
+
+  /* Give table headers and cells plenty of room in Urdu mode */
+  [dir="rtl"] th, 
+  [dir="rtl"] td {
+    padding-top: 1.1rem !important;
+    padding-bottom: 1.1rem !important;
+    line-height: 1.8 !important;
+    text-align: right !important;
+  }
+
+  /* Sidebar styling tweaks for Urdu RTL */
+  [dir="rtl"] [data-sidebar="menu-button"] {
+    height: auto !important;
+    padding-top: 0.95rem !important;
+    padding-bottom: 0.95rem !important;
+    min-height: 3.25rem;
+  }
+  
+  [dir="rtl"] [data-sidebar="group-label"] {
+    margin-bottom: 0.65rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+
+  /* Dashboard summary cards inner layouts spacing */
+  [dir="rtl"] .text-2xl, 
+  [dir="rtl"] .text-3xl {
+    margin-top: 0.75rem !important;
+    margin-bottom: 0.75rem !important;
   }
 }
 
