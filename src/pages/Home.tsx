@@ -9,12 +9,16 @@ import { useRateCardStore } from "@/stores/rateCardStore";
 import { ProductCard, type ShopItem } from "@/components/ProductCard";
 import { useTranslation } from "react-i18next";
 import { TranslatedText } from "@/components/TranslatedText";
+import { fetchFeaturedReviews } from '@/integrations/supabase/client';
 
-const testimonials = [
-  { text: "Outstanding quality. The Dal Masoor we ordered was perfectly graded and arrived on schedule. Highly recommended for wholesale.", author: "Ahmed Ali", role: "Restaurant Owner" },
-  { text: "QAIS Foods has been our most reliable supplier for rice. Consistent quality and excellent packaging.", author: "Fatima Noor", role: "Catering Director" },
-  { text: "Very professional service and premium quality pulses. The direct-from-factory pricing is a huge advantage for our business.", author: "Usman Tariq", role: "Supermarket Manager" },
-];
+type Review = {
+  text: string;
+  author: string;
+  role: string;
+  date: string; // added date string
+};
+
+
 
 const fadeSlide = (dir: "up" | "left" | "right" = "up") => ({
   hidden: {
@@ -32,6 +36,8 @@ export default function Home() {
   const [featuredItems, setFeaturedItems] = useState<ShopItem[]>([]);
   const { rates, fetchRates } = useRateCardStore();
   const { t } = useTranslation();
+  const [testimonials, setTestimonials] = useState<Review[]>([]);
+  
 
   useEffect(() => {
     fetchRates();
@@ -56,7 +62,32 @@ export default function Home() {
         setFeaturedItems(sorted);
       }
     };
+
+    // Fetch featured reviews for homepage
+    const fetchReviews = async () => {
+      const { data, error } = await fetchFeaturedReviews();
+      if (data) {
+        // data is an array of arrays (reviews per featured position)
+        const flat = (data as any[]).flat();
+        // sort by created_at if exists, else keep order, then take first 3
+        const sorted = flat
+          .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 3);
+        // map to Review type, ensure date field
+        const reviews: Review[] = sorted.map((r: any) => ({
+          text: r.text,
+          author: r.author,
+          role: r.role ?? '',
+          date: r.created_at ? new Date(r.created_at).toLocaleDateString() : ''
+        }));
+        setTestimonials(reviews);
+      }
+      if (error) {
+        console.error('Error fetching reviews:', error);
+      }
+    };
     fetchFeatured();
+    fetchReviews();
   }, [fetchRates]);
 
   return (
@@ -68,7 +99,7 @@ export default function Home() {
       {/* ── Testimonials ───────────────────────────── */}
       <section className="py-24 md:py-32 bg-[#F9F9F9] dark:bg-muted/20 relative overflow-hidden">
         {/* Decorative Blob */}
-        <div className="absolute -left-[200px] top-[10%] w-[600px] h-[600px] bg-primary/5 blob-shape pointer-events-none" />
+        <div className="absolute left-[-200px] top-[10%] w-[600px] h-[600px] bg-primary/5 blob-shape pointer-events-none" />
         
         <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10">
           <motion.div
@@ -90,7 +121,7 @@ export default function Home() {
             {testimonials.map((tItem, i) => (
               <motion.div
                 key={i}
-                className="p-8 md:p-10 rounded-[2rem] bg-white dark:bg-card border border-border shadow-sm hover:shadow-lg transition-all duration-300 relative flex flex-col justify-between"
+                className="p-8 md:p-10 rounded-4xl bg-white dark:bg-card border border-border shadow-xs hover:shadow-lg transition-all duration-300 relative flex flex-col justify-between"
                 initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-40px" }}
@@ -108,6 +139,11 @@ export default function Home() {
                   <p className="text-xs text-muted-foreground uppercase tracking-widest mt-1">
                     <TranslatedText text={tItem.role} />
                   </p>
+                  {tItem.date && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      {tItem.date}
+                    </p>
+                  )}
                 </div>
               </motion.div>
             ))}
@@ -181,7 +217,7 @@ export default function Home() {
           variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.15 } } }}
         >
           <motion.div variants={fadeSlide("up")}>
-            <span className="inline-block py-1.5 px-4 rounded-full bg-white dark:bg-background text-primary font-bold text-xs tracking-[0.2em] uppercase mb-6 shadow-sm">
+            <span className="inline-block py-1.5 px-4 rounded-full bg-white dark:bg-background text-primary font-bold text-xs tracking-[0.2em] uppercase mb-6 shadow-xs">
               {t('partner_with_us')}
             </span>
           </motion.div>
@@ -198,7 +234,7 @@ export default function Home() {
               </Button>
             </Link>
             <Link to="/shop">
-              <Button size="lg" variant="outline" className="rounded-full bg-white dark:bg-card border-[3px] border-border text-foreground font-bold text-base px-10 h-14 hover:border-primary hover:text-primary transition-all hover:-translate-y-1 shadow-sm hover:shadow-md">
+              <Button size="lg" variant="outline" className="rounded-full bg-white dark:bg-card border-[3px] border-border text-foreground font-bold text-base px-10 h-14 hover:border-primary hover:text-primary transition-all hover:-translate-y-1 shadow-xs hover:shadow-md">
                 {t('browse_shop')} <Package className="ml-2 h-5 w-5" />
               </Button>
             </Link>

@@ -116,7 +116,7 @@ const Reports = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Reports</h1>
-          <p className="text-sm text-muted-foreground">Financial and operational reports</p>
+          <p className="text-sm text-muted-foreground hidden sm:block">Financial and operational reports</p>
         </div>
         <Button variant="outline" onClick={handlePrint}><Printer className="h-4 w-4 mr-2" /> Print</Button>
       </div>

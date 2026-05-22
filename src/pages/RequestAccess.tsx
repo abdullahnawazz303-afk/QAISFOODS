@@ -140,7 +140,7 @@ const RequestAccess = () => {
           </p>
         </div>
 
-        <Card className="shadow-sm">
+        <Card className="shadow-xs">
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-4">
 

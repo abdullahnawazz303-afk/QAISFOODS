@@ -25,6 +25,7 @@ import { TranslatedText } from "@/components/TranslatedText";
 import { useUIStore } from "@/stores/uiStore";
 import { ProductCard, type ShopItem } from "@/components/ProductCard";
 
+
 const GRADE_OPTIONS = ["A+", "A", "B", "C"];
 const PACKING_OPTIONS = ["0.5 kg", "1 kg"];
 
@@ -80,6 +81,7 @@ export default function ProductDetails() {
   const { rates, fetchRates } = useRateCardStore();
 
   const [entries, setEntries] = useState<CartEntry[]>([emptyEntry()]);
+
 
   // Reviews state variables
   const [reviews, setReviews] = useState<ProductReview[]>([]);
@@ -384,23 +386,23 @@ export default function ProductDetails() {
   return (
     <div className="bg-background pb-24 w-full max-w-full" dir={dir}>
       {/* Top Navigation Bar */}
-      <div className="sticky top-0 z-40 bg-white/80 dark:bg-background/80 backdrop-blur-md border-b border-border/50">
+      <div className="sticky top-0 z-40 glassmorphism-premium border-b border-border/30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link 
             to="/shop" 
-            className="flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition-colors group"
+            className="flex items-center gap-2 text-sm font-black text-muted-foreground hover:text-primary transition-all duration-300 group py-1.5 px-3 rounded-full hover:bg-primary/5"
           >
-            <ChevronLeft className={`h-5 w-5 transition-transform ${language === 'ur' ? 'group-hover:translate-x-1 rotate-180' : 'group-hover:-translate-x-1'}`} />
+            <ChevronLeft className={`h-5 w-5 transition-transform duration-300 ${language === 'ur' ? 'group-hover:translate-x-1 rotate-180' : 'group-hover:-translate-x-1'}`} />
             <TranslatedText text="Back to Catalog" />
           </Link>
 
           <button
             onClick={() => setCartOpen(true)}
-            className="relative p-2 rounded-full hover:bg-muted transition-colors"
+            className="relative p-2.5 rounded-full hover:bg-primary/10 text-foreground transition-all duration-300 hover:scale-105 active:scale-95 group"
           >
-            <ShoppingBag className="h-6 w-6 text-foreground" />
+            <ShoppingBag className="h-5.5 w-5.5 text-foreground group-hover:text-primary transition-colors" />
             {totalKgs > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary text-white text-[10px] font-black flex items-center justify-center border-2 border-white">
+              <span className="absolute -top-0.5 -right-0.5 w-5.5 h-5.5 rounded-full bg-primary text-white text-[10px] font-black flex items-center justify-center border-2 border-white dark:border-background shadow-md animate-soft-pulse">
                 {entries.filter(e => e.kgs > 0).length}
               </span>
             )}
@@ -408,51 +410,52 @@ export default function ProductDetails() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 pt-4 md:pt-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+      <div className="max-w-7xl mx-auto px-4 pt-6 md:pt-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
           
           {/* Left Side: Product Image Display */}
           <motion.div 
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="space-y-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="space-y-6"
           >
-            <div className="aspect-[4/3] max-w-[420px] mx-auto w-full rounded-[2.5rem] overflow-hidden bg-muted/30 border border-border/50 shadow-2xl relative group">
+            <div className="aspect-4/3 max-w-[420px] mx-auto w-full rounded-[2.5rem] overflow-hidden bg-linear-to-br from-emerald-50/10 to-emerald-500/5 dark:from-emerald-950/20 dark:to-emerald-900/5 border border-border/40 shadow-2xl relative group premium-emerald-glow smooth-scale-transition hover:scale-[1.01] hover:border-primary/30">
               {item.image_url && !imgError ? (
                 <img 
                   src={item.image_url} 
                   alt={item.english_name || item.name} 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000 ease-out"
                   onError={() => setImgError(true)}
                 />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-muted-foreground">
-                  <Package className="h-24 w-24 opacity-20" />
-                  <span className="font-bold uppercase tracking-widest text-xs"><TranslatedText text="No Image Available" /></span>
+                <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-muted-foreground bg-muted/20">
+                  <Package className="h-20 w-20 opacity-20 text-primary" />
+                  <span className="font-black uppercase tracking-widest text-[10px] text-primary/60"><TranslatedText text="No Image Available" /></span>
                 </div>
               )}
               
               {/* Badge */}
-              <div className="absolute top-8 left-8 flex flex-col gap-2">
-                <span className="bg-primary text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-lg">
+              <div className="absolute top-6 left-6 flex flex-col gap-2.5">
+                <span className="bg-primary text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-md">
                   <TranslatedText text="Premium Quality" />
                 </span>
-                <span className="bg-white/90 dark:bg-card/90 backdrop-blur-sm text-foreground px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg border border-border/50">
+                <span className="glassmorphism-premium text-foreground px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-md border border-border/30">
                   {item.category}
                 </span>
               </div>
             </div>
 
             {/* Quality Accents */}
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-3 gap-3 max-w-[420px] mx-auto w-full">
               {[
                 { icon: ShieldCheck, text: "Quality Verified" },
                 { icon: Truck, text: "Bulk Delivery" },
                 { icon: RotateCcw, text: "Grade Assured" }
               ].map((accent, i) => (
-                <div key={i} className="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-white dark:bg-card border border-border/50 shadow-sm text-center">
-                  <accent.icon className="h-4.5 w-4.5 text-primary" />
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider text-center"><TranslatedText text={accent.text} /></span>
+                <div key={i} className="flex flex-col items-center gap-2 p-3.5 rounded-2xl glassmorphism-premium border border-border/30 shadow-xs text-center smooth-scale-transition hover:-translate-y-1 hover:border-primary/35 hover:shadow-md group">
+                  <accent.icon className="h-5 w-5 text-primary group-hover:scale-110 transition-transform duration-300" />
+                  <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest text-center"><TranslatedText text={accent.text} /></span>
                 </div>
               ))}
             </div>
@@ -460,17 +463,18 @@ export default function ProductDetails() {
 
           {/* Right Side: Configuration Form */}
           <motion.div 
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
             className="flex flex-col"
           >
             {/* Header info */}
             <div className="mb-6">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-1.5 mb-2.5">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="h-4 w-4 fill-primary text-primary" />
+                  <Star key={i} className="h-4 w-4 fill-amber-500 text-amber-500" />
                 ))}
-                <span className="text-xs font-bold text-muted-foreground ml-2">(4.9/5 <TranslatedText text="Rating" as="span" />)</span>
+                <span className="text-xs font-black text-muted-foreground ml-2">(4.9/5 <TranslatedText text="Rating" as="span" />)</span>
               </div>
               <h1 
                 className="text-2xl md:text-3xl font-black text-foreground tracking-tight"
@@ -482,9 +486,9 @@ export default function ProductDetails() {
 
             {/* Live Rates Section */}
             {itemRates.length > 0 && (
-              <div className="bg-primary/5 rounded-2xl p-3 mb-4 border border-primary/10">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              <div className="glassmorphism-premium rounded-3xl p-4 mb-6 border border-primary/20 premium-emerald-glow">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                   <span className="text-[10px] font-black text-primary uppercase tracking-widest"><TranslatedText text="Market Live Rates (Rs/KG)" /></span>
                 </div>
                 <div className="flex flex-wrap gap-3">
@@ -492,8 +496,8 @@ export default function ProductDetails() {
                     const rate = itemRates.find(r => r.grade === g);
                     if (!rate) return null;
                     return (
-                      <div key={g} className="bg-white dark:bg-card border border-primary/20 px-4 py-2 rounded-2xl shadow-sm">
-                        <span className="text-xs font-bold text-muted-foreground mx-2">{language === 'ur' ? `گریڈ ${g}` : `Grade ${g}`}:</span>
+                      <div key={g} className="bg-white/90 dark:bg-card/90 border border-primary/10 px-4 py-2 rounded-2xl shadow-xs hover:border-primary/30 transition-colors">
+                        <span className="text-xs font-bold text-muted-foreground mx-1">{language === 'ur' ? `گریڈ ${g}` : `Grade ${g}`}:</span>
                         <span className="text-base font-black text-foreground" dir="ltr">Rs. {rate.price_per_kg}</span>
                       </div>
                     )
@@ -506,104 +510,110 @@ export default function ProductDetails() {
             <div className="space-y-4 mb-8">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-black text-foreground uppercase tracking-widest"><TranslatedText text="Order Configuration" /></h3>
-                <span className="text-[9px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full uppercase"><TranslatedText text="Wholesale Packaging" /></span>
+                <span className="text-[9px] font-black text-muted-foreground bg-muted px-2.5 py-1 rounded-full uppercase"><TranslatedText text="Wholesale Packaging" /></span>
               </div>
               
-              {entries.map((entry, i) => {
-                const currentRate = itemRates.find(r => r.grade === entry.grade)?.price_per_kg || 0;
-                const entryTotal = currentRate * (Number(entry.kgs) || 0);
+              <AnimatePresence initial={false}>
+                {entries.map((entry, i) => {
+                  const currentRate = itemRates.find(r => r.grade === entry.grade)?.price_per_kg || 0;
+                  const entryTotal = currentRate * (Number(entry.kgs) || 0);
 
-                return (
-                  <motion.div 
-                    layout
-                    key={i}
-                    className="p-4 rounded-2xl bg-white dark:bg-card border-2 border-border/50 shadow-sm space-y-4 relative"
-                  >
-                    <div className="flex items-center justify-between border-b border-border/30 pb-3">
-                      <span className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
-                        <Package className="h-4 w-4" /> <TranslatedText text="Batch Variant" as="span" /> {language === 'ur' ? (i + 1).toLocaleString('ur-PK') : i + 1}
-                      </span>
-                      {entries.length > 1 && (
-                        <button 
-                          onClick={() => removeRow(i)}
-                          className="text-muted-foreground hover:text-destructive transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                  return (
+                    <motion.div 
+                      layout
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                      transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                      key={i}
+                      className="p-5 rounded-3xl bg-white/60 dark:bg-card/45 border border-border/40 shadow-md space-y-4 relative premium-card-glow smooth-scale-transition hover:border-primary/25 hover:shadow-lg"
+                    >
+                      <div className="flex items-center justify-between border-b border-border/30 pb-3">
+                        <span className="text-xs font-black text-primary uppercase tracking-widest flex items-center gap-2">
+                          <Package className="h-4 w-4" /> <TranslatedText text="Batch Variant" as="span" /> {language === 'ur' ? (i + 1).toLocaleString('ur-PK') : i + 1}
+                        </span>
+                        {entries.length > 1 && (
+                          <button 
+                            onClick={() => removeRow(i)}
+                            className="text-muted-foreground hover:text-destructive p-1 rounded-lg hover:bg-destructive/5 transition-all"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5 ml-1"><TranslatedText text="Grade" /></label>
+                          <select
+                            value={entry.grade}
+                            onChange={(e) => updateEntry(i, "grade", e.target.value)}
+                            className="w-full h-11 px-3 premium-input-style outline-hidden font-bold text-sm"
+                          >
+                            {GRADE_OPTIONS.map(g => <option key={g} value={g}>{language === 'ur' ? `گریڈ ${g}` : `Grade ${g}`}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5 ml-1"><TranslatedText text="Packing" /></label>
+                          <select
+                            value={entry.packing}
+                            onChange={(e) => updateEntry(i, "packing", e.target.value)}
+                            className="w-full h-11 px-3 premium-input-style outline-hidden font-bold text-sm"
+                          >
+                            {PACKING_OPTIONS.map(p => <option key={p} value={p}>{p} {language === 'ur' ? 'بیگز' : 'bags'}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1.5 ml-1"><TranslatedText text="Weight (KG)" /></label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={entry.kgs || ""}
+                            onChange={(e) => updateEntry(i, "kgs", Number(e.target.value))}
+                            placeholder="0.0"
+                            className="w-full h-11 px-4 premium-input-style outline-hidden font-bold text-sm text-left"
+                            dir="ltr"
+                          />
+                        </div>
+                      </div>
+
+                      {entryTotal > 0 && (
+                        <div className="flex items-center justify-between px-4 py-3 rounded-2xl glassmorphism-premium border border-primary/10 text-xs">
+                          <span className="font-bold text-muted-foreground uppercase tracking-wider"><TranslatedText text="Estimated Batch Cost" /></span>
+                          <span className="text-sm font-black text-foreground">Rs. {entryTotal.toLocaleString()}</span>
+                        </div>
                       )}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-1.5 ml-1"><TranslatedText text="Grade" /></label>
-                        <select
-                          value={entry.grade}
-                          onChange={(e) => updateEntry(i, "grade", e.target.value)}
-                          className="w-full h-10 px-3 rounded-xl border-2 border-border bg-background focus:border-primary outline-none transition-all font-bold text-sm"
-                        >
-                          {GRADE_OPTIONS.map(g => <option key={g} value={g}>{language === 'ur' ? `گریڈ ${g}` : `Grade ${g}`}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-1.5 ml-1"><TranslatedText text="Packing" /></label>
-                        <select
-                          value={entry.packing}
-                          onChange={(e) => updateEntry(i, "packing", e.target.value)}
-                          className="w-full h-10 px-3 rounded-xl border-2 border-border bg-background focus:border-primary outline-none transition-all font-bold text-sm"
-                        >
-                          {PACKING_OPTIONS.map(p => <option key={p} value={p}>{p} {language === 'ur' ? 'بیگز' : 'bags'}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-1.5 ml-1"><TranslatedText text="Weight (KG)" /></label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={entry.kgs || ""}
-                          onChange={(e) => updateEntry(i, "kgs", Number(e.target.value))}
-                          placeholder="0.0"
-                          className="w-full h-10 px-3 rounded-xl border-2 border-border bg-background focus:border-primary outline-none transition-all font-bold text-sm text-left"
-                          dir="ltr"
-                        />
-                      </div>
-                    </div>
-
-                    {entryTotal > 0 && (
-                      <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-muted/30 text-xs">
-                        <span className="font-bold text-muted-foreground uppercase tracking-wider"><TranslatedText text="Estimated Batch Cost" /></span>
-                        <span className="text-sm font-black text-foreground">Rs. {entryTotal.toLocaleString()}</span>
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })}
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
 
               <button 
                 onClick={addRow}
-                className="w-full py-2.5 rounded-2xl border-2 border-dashed border-primary/30 text-primary font-bold text-xs hover:bg-primary/5 transition-all flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-2xl border border-dashed border-primary/40 text-primary font-black text-xs hover:bg-primary/5 hover:border-primary transition-all flex items-center justify-center gap-2 shadow-xs hover:shadow-md smooth-scale-transition"
               >
                 <Plus className="h-4 w-4" /> <TranslatedText text="Add Quality Variation" />
               </button>
             </div>
 
             {/* Sticky Total Bar or Summary */}
-            <div className="mt-auto pt-4 border-t border-border/50">
+            <div className="mt-auto pt-5 border-t border-border/50">
               {totalKgs > 0 && (
-                <div className="flex items-end justify-between mb-3 px-2">
+                <div className="flex items-end justify-between mb-4 px-2">
                   <div>
-                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block mb-1"><TranslatedText text="Total Weight" /></span>
-                    <span className="text-xl font-black text-foreground">{totalKgs.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">{language === 'ur' ? 'کلو' : 'kg'}</span></span>
+                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1"><TranslatedText text="Total Weight" /></span>
+                    <span className="text-2xl font-black text-foreground">{totalKgs.toLocaleString()} <span className="text-sm font-medium text-muted-foreground">{language === 'ur' ? 'کلو' : 'kg'}</span></span>
                   </div>
                   <div className="text-right">
-                    <span className="text-xs font-bold text-primary uppercase tracking-widest block mb-1"><TranslatedText text="Grand Estimated Bill" /></span>
-                    <span className="text-2xl font-black text-primary" dir="ltr">Rs. {totalBill.toLocaleString()}</span>
+                    <span className="text-[10px] font-black text-primary uppercase tracking-widest block mb-1"><TranslatedText text="Grand Estimated Bill" /></span>
+                    <span className="text-3xl font-black text-primary" dir="ltr">Rs. {totalBill.toLocaleString()}</span>
                   </div>
                 </div>
               )}
 
               <button
                 onClick={handleAddToCart}
-                className="w-full h-12 rounded-full bg-primary text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl hover:-translate-y-1 active:translate-y-0 transition-all"
+                className="w-full h-13 rounded-full bg-primary text-white font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl hover:-translate-y-1 active:translate-y-0 transition-all duration-300 premium-emerald-glow premium-card-glow"
               >
                 <ShoppingBag className="h-5 w-5" />
                 <TranslatedText text="Add to Wholesale Cart" />
@@ -613,7 +623,7 @@ export default function ProductDetails() {
         </div>
 
         {/* --- CUSTOMER REVIEWS SECTION --- */}
-        <section className="mt-24 border-t pt-16">
+        <section className="mt-24 border-t border-border/30 pt-16">
           <div className="max-w-4xl mx-auto">
             {/* Header / Summary */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-12">
@@ -622,26 +632,26 @@ export default function ProductDetails() {
                   <MessageSquare className="h-7 w-7 text-primary" />
                   {language === 'ur' ? 'کسٹمر کے جائزے' : 'Customer Reviews'}
                 </h2>
-                <p className="text-muted-foreground mt-1.5">
+                <p className="text-muted-foreground mt-1.5 text-sm font-medium">
                   {language === 'ur' 
                     ? `ہمارے کسٹمرز کی رائے اس پروڈکٹ کے بارے میں (${reviews.length} جائزے)` 
                     : `What our customers are saying about this product (${reviews.length} ${reviews.length === 1 ? 'review' : 'reviews'})`}
                 </p>
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className="bg-primary/5 dark:bg-primary/10 px-5 py-3.5 rounded-2xl border border-primary/10 flex items-center gap-3 shadow-sm">
+              <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
+                <div className="glassmorphism-premium px-6 py-4 rounded-3xl border border-primary/25 flex items-center gap-4 shadow-md premium-emerald-glow">
                   <div className="text-center">
                     <span className="text-3xl font-black text-primary block leading-none">
                       {reviews.length > 0 
                         ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) 
                         : "0.0"}
                     </span>
-                    <span className="text-[10px] font-black text-primary/70 uppercase tracking-widest mt-1 block">
+                    <span className="text-[9px] font-black text-primary/70 uppercase tracking-widest mt-1 block">
                       {language === 'ur' ? 'اوسط درجہ' : 'Out of 5'}
                     </span>
                   </div>
-                  <div className="h-8 w-[1px] bg-primary/20" />
+                  <div className="h-8 w-px bg-primary/20" />
                   <div className="flex flex-col">
                     <div className="flex text-amber-500">
                       {[1, 2, 3, 4, 5].map((star) => {
@@ -649,7 +659,7 @@ export default function ProductDetails() {
                         return (
                           <Star 
                             key={star} 
-                            className={`h-4 w-4 ${star <= Math.round(avg) ? 'fill-amber-500' : 'text-amber-200 dark:text-muted'}`} 
+                            className={`h-4 w-4 ${star <= Math.round(avg) ? 'fill-amber-500 text-amber-500' : 'text-amber-200 dark:text-muted/30'}`} 
                           />
                         );
                       })}
@@ -664,13 +674,12 @@ export default function ProductDetails() {
                   <button
                     onClick={() => {
                       setEditingReview(null);
-                      // Default the review name to the first part of their email address for maximum convenience!
                       setReviewName(userEmail ? userEmail.split('@')[0] : "");
                       setReviewRating(5);
                       setReviewComment("");
                       setShowReviewForm(!showReviewForm);
                     }}
-                    className="h-12 px-6 rounded-full bg-primary text-white font-black text-xs uppercase tracking-wider shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 active:translate-y-0 shrink-0"
+                    className="h-12 px-6 rounded-full bg-primary text-white font-black text-xs uppercase tracking-wider shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 active:translate-y-0 shrink-0 premium-emerald-glow"
                   >
                     {showReviewForm 
                       ? (language === 'ur' ? 'بند کریں' : 'Close Form') 
@@ -700,7 +709,7 @@ export default function ProductDetails() {
                 >
                   <form 
                     onSubmit={handleSubmitReview}
-                    className="bg-muted/30 dark:bg-card/30 border border-border/80 rounded-3xl p-6 md:p-8 space-y-6 shadow-md relative"
+                    className="glassmorphism-premium border border-border/30 rounded-3xl p-6 md:p-8 space-y-6 shadow-lg relative premium-emerald-glow"
                   >
                     <h3 className="text-lg font-black text-foreground tracking-tight">
                       {editingReview 
@@ -719,10 +728,10 @@ export default function ProductDetails() {
                             type="button"
                             key={star}
                             onClick={() => setReviewRating(star)}
-                            className="p-1 -m-1 focus:outline-none transition-transform hover:scale-125"
+                            className="p-1 -m-1 focus:outline-hidden transition-transform hover:scale-125"
                           >
                             <Star 
-                              className={`h-8 w-8 transition-colors ${
+                              className={`h-8 w-8 transition-colors duration-300 ${
                                 star <= reviewRating 
                                   ? 'fill-amber-500 text-amber-500' 
                                   : 'text-muted-foreground/30 hover:text-amber-500'
@@ -744,7 +753,7 @@ export default function ProductDetails() {
                         onChange={(e) => setReviewName(e.target.value)}
                         placeholder={language === 'ur' ? "جیسے: محمد عثمان" : "e.g. Muhammad Usman"}
                         required
-                        className="w-full h-12 px-4 rounded-xl border border-border/80 bg-white dark:bg-card focus:border-primary outline-none transition-all font-bold text-sm"
+                        className="w-full h-12 px-4 premium-input-style outline-hidden font-bold text-sm"
                       />
                     </div>
 
@@ -759,7 +768,7 @@ export default function ProductDetails() {
                         placeholder={language === 'ur' ? "اپنا تبصرہ یہاں لکھیں..." : "Write your review here..."}
                         required
                         rows={4}
-                        className="w-full p-4 rounded-xl border border-border/80 bg-white dark:bg-card focus:border-primary outline-none transition-all font-bold text-sm resize-none"
+                        className="w-full p-4 rounded-2xl premium-input-style outline-hidden font-bold text-sm resize-none"
                       />
                     </div>
 
@@ -768,7 +777,7 @@ export default function ProductDetails() {
                       <button
                         type="submit"
                         disabled={submittingReview}
-                        className="h-11 px-6 rounded-full bg-primary text-white font-black text-xs uppercase tracking-widest hover:opacity-95 shadow-md flex items-center justify-center gap-2"
+                        className="h-11 px-6 rounded-full bg-primary text-white font-black text-xs uppercase tracking-widest hover:opacity-95 shadow-md flex items-center justify-center gap-2 premium-emerald-glow"
                       >
                         {submittingReview ? (
                           <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -782,7 +791,7 @@ export default function ProductDetails() {
                           setShowReviewForm(false);
                           setEditingReview(null);
                         }}
-                        className="h-11 px-6 rounded-full border border-border bg-white dark:bg-card text-foreground font-black text-xs uppercase tracking-widest hover:bg-muted/50"
+                        className="h-11 px-6 rounded-full border border-border bg-white dark:bg-card text-foreground font-black text-xs uppercase tracking-widest hover:bg-muted/50 transition-colors"
                       >
                         {language === 'ur' ? 'کینسل' : 'Cancel'}
                       </button>
@@ -799,7 +808,7 @@ export default function ProductDetails() {
                 <span className="text-sm font-bold">{language === 'ur' ? 'جائزے لوڈ ہو رہے ہیں...' : 'Loading reviews...'}</span>
               </div>
             ) : reviews.length === 0 ? (
-              <div className="bg-muted/10 border-2 border-dashed rounded-3xl p-12 text-center">
+              <div className="bg-muted/10 dark:bg-card/10 border border-dashed border-border rounded-3xl p-12 text-center">
                 <MessageSquare className="h-10 w-10 text-muted-foreground/30 mx-auto mb-4" />
                 <h4 className="font-black text-foreground">
                   {language === 'ur' ? 'کوئی جائزہ موجود نہیں' : 'No reviews yet'}
@@ -835,8 +844,10 @@ export default function ProductDetails() {
                   return (
                     <motion.div
                       layout
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="glassmorphism-premium border border-border/30 rounded-3xl p-5 md:p-6 shadow-md premium-card-glow smooth-scale-transition hover:border-primary/20 hover:shadow-lg flex gap-4 relative"
                       key={rev.id}
-                      className="bg-card border border-border/60 hover:border-border rounded-3xl p-5 md:p-6 shadow-sm hover:shadow-md transition-all flex gap-4 relative"
                     >
                       {/* Avatar */}
                       <div className={`h-11 w-11 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 shadow-inner ${avatarColor}`}>
@@ -868,13 +879,13 @@ export default function ProductDetails() {
                             {[1, 2, 3, 4, 5].map((star) => (
                               <Star 
                                 key={star} 
-                                className={`h-3.5 w-3.5 ${star <= rev.rating ? 'fill-amber-500' : 'text-amber-200 dark:text-muted'}`} 
+                                className={`h-3.5 w-3.5 ${star <= rev.rating ? 'fill-amber-500 text-amber-500' : 'text-amber-200 dark:text-muted/20'}`} 
                               />
                             ))}
                           </div>
                         </div>
 
-                        <p className="text-sm text-foreground/90 font-medium leading-relaxed break-words whitespace-pre-line">
+                        <p className="text-sm text-foreground/90 font-medium leading-relaxed wrap-break-word whitespace-pre-line">
                           {rev.comment}
                         </p>
                       </div>
@@ -884,7 +895,7 @@ export default function ProductDetails() {
                         <div className="absolute top-5 right-5 md:right-6 flex gap-2">
                           <button
                             onClick={() => handleEditClick(rev)}
-                            className="p-2 rounded-xl bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                            className="p-2 rounded-xl bg-white/70 dark:bg-card/70 hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors border border-border/30 shadow-xs"
                             title={language === 'ur' ? 'ترمیم کریں' : 'Edit Review'}
                           >
                             <Pencil className="h-3.5 w-3.5" />
@@ -895,7 +906,7 @@ export default function ProductDetails() {
                                 handleDeleteReview(rev.id);
                               }
                             }}
-                            className="p-2 rounded-xl bg-muted hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                            className="p-2 rounded-xl bg-white/70 dark:bg-card/70 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors border border-border/30 shadow-xs"
                             title={language === 'ur' ? 'ڈیلیٹ کریں' : 'Delete Review'}
                           >
                             <Trash2 className="h-3.5 w-3.5" />

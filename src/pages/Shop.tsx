@@ -149,8 +149,8 @@ export default function Shop() {
       </section>
 
       {/* Search + Filters */}
-      <section className="sticky top-24 z-30 bg-background/80 backdrop-blur-xl border-b shadow-sm py-4 transition-all">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row md:items-center gap-4">
+      <section className="sticky top-0 z-30 bg-white/70 dark:bg-black/50 backdrop-blur-md border-b border-border/40 py-4 transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-row items-center gap-4">
           
           {/* Search bar + Filter Toggle */}
           <div className="flex items-center gap-3 w-full md:w-auto flex-1 md:flex-initial">
@@ -160,12 +160,12 @@ export default function Shop() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={language === 'ur' ? "مصنوعات تلاش کریں..." : "Search products..."}
-                className="w-full h-14 pl-12 pr-12 rounded-full border-2 border-border bg-white dark:bg-card text-base focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-sm transition-all font-medium"
+                className="w-full h-14 pl-12 pr-12 rounded-full border-2 border-border/80 bg-white/70 dark:bg-card/50 text-base focus:outline-hidden focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-lg hover:border-primary/40 transition-all duration-300 font-medium placeholder:text-muted-foreground/60 backdrop-blur-xs"
               />
               {search && (
                 <button
                   onClick={() => setSearch("")}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-muted-foreground hover:text-white transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-white transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -173,13 +173,13 @@ export default function Shop() {
             </div>
             
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
               onClick={() => setShowFilters(!showFilters)}
-              className={`h-14 px-5 rounded-full border-2 font-bold flex items-center gap-2.5 transition-all shadow-sm ${
+              className={`h-14 px-6 rounded-full border-2 font-bold flex items-center gap-2.5 transition-all shadow-md ${
                 showFilters || minPrice !== "" || maxPrice !== "" || sortBy !== "none"
-                  ? "bg-primary/10 border-primary text-primary"
-                  : "bg-white dark:bg-card border-border text-foreground hover:border-primary/30"
+                  ? "bg-primary text-white border-primary"
+                  : "bg-white/75 dark:bg-card/60 border-border text-foreground hover:border-primary/40"
               }`}
             >
               <SlidersHorizontal className="h-5 w-5" />
@@ -187,26 +187,38 @@ export default function Shop() {
                 <TranslatedText text="Filters" />
               </span>
               {(minPrice !== "" || maxPrice !== "" || sortBy !== "none") && (
-                <span className="w-2.5 h-2.5 rounded-full bg-primary" />
+                <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
               )}
             </motion.button>
           </div>
 
-          {/* Category pills */}
+          {/* Category pills with Framer Motion layout animations */}
           <div className="flex-1 min-w-0 flex flex-nowrap gap-3 overflow-x-auto pb-2 pt-1 md:py-1 scrollbar-none items-center pr-4">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat.key}
-                onClick={() => setActiveCategory(cat.key)}
-                className={`flex-shrink-0 px-6 py-3 rounded-full text-sm font-bold transition-all border-2 flex items-center gap-2 ${
-                  activeCategory === cat.key
-                    ? "bg-primary text-white border-primary shadow-md"
-                    : "bg-white dark:bg-card text-foreground border-border hover:border-primary/40 hover:bg-primary/5"
-                }`}
-              >
-                {language === 'ur' ? cat.urdu : cat.label}
-              </button>
-            ))}
+            {CATEGORIES.map((cat) => {
+              const isActive = activeCategory === cat.key;
+              return (
+                <motion.button
+                  key={cat.key}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setActiveCategory(cat.key)}
+                  className={`shrink-0 px-6 py-3 rounded-full text-sm font-bold transition-all border-2 flex items-center gap-2 relative overflow-hidden ${
+                    isActive
+                      ? "bg-primary text-white border-primary shadow-lg"
+                      : "bg-white/75 dark:bg-card/60 text-foreground border-border/80 hover:border-primary/40 hover:bg-primary/5 shadow-xs"
+                  }`}
+                >
+                  <span className="relative z-10">{language === 'ur' ? cat.urdu : cat.label}</span>
+                  {isActive && (
+                    <motion.span 
+                      layoutId="activeCategoryGlow"
+                      className="absolute inset-0 bg-linear-to-r from-primary-foreground/10 to-transparent pointer-events-none"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                </motion.button>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -237,7 +249,7 @@ export default function Shop() {
                       value={minPrice}
                       onChange={(e) => setMinPrice(e.target.value === "" ? "" : Number(e.target.value))}
                       placeholder={language === 'ur' ? "کم سے کم" : "Min"}
-                      className="w-full h-11 pl-9 pr-3 rounded-xl border border-border bg-white dark:bg-card text-sm focus:outline-none focus:border-primary font-bold text-left"
+                      className="w-full h-11 pl-9 pr-3 rounded-xl border border-border bg-white dark:bg-card text-sm focus:outline-hidden focus:border-primary font-bold text-left"
                       dir="ltr"
                     />
                   </div>
@@ -249,7 +261,7 @@ export default function Shop() {
                       value={maxPrice}
                       onChange={(e) => setMaxPrice(e.target.value === "" ? "" : Number(e.target.value))}
                       placeholder={language === 'ur' ? "زیادہ سے زیادہ" : "Max"}
-                      className="w-full h-11 pl-9 pr-3 rounded-xl border border-border bg-white dark:bg-card text-sm focus:outline-none focus:border-primary font-bold text-left"
+                      className="w-full h-11 pl-9 pr-3 rounded-xl border border-border bg-white dark:bg-card text-sm focus:outline-hidden focus:border-primary font-bold text-left"
                       dir="ltr"
                     />
                   </div>
@@ -273,7 +285,7 @@ export default function Shop() {
                         setMinPrice(preset.min);
                         setMaxPrice(preset.max);
                       }}
-                      className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-card border border-border hover:border-primary hover:text-primary transition-all shadow-sm"
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-card border border-border hover:border-primary hover:text-primary transition-all shadow-xs"
                     >
                       {preset.label}
                     </button>
@@ -290,7 +302,7 @@ export default function Shop() {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as any)}
-                    className="w-full h-11 px-3.5 rounded-xl border border-border bg-white dark:bg-card text-xs font-bold focus:outline-none focus:border-primary"
+                    className="w-full h-11 px-3.5 rounded-xl border border-border bg-white dark:bg-card text-xs font-bold focus:outline-hidden focus:border-primary"
                   >
                     <option value="none">{language === 'ur' ? "عام ترتیب (پہلے سے طے شدہ)" : "Default (Featured)"}</option>
                     <option value="price-asc">{language === 'ur' ? "قیمت: کم سے زیادہ" : "Price: Low to High"}</option>
@@ -373,11 +385,11 @@ export default function Shop() {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="rounded-[2.5rem] bg-muted/40 animate-pulse aspect-[3/4]" />
+                <div key={i} className="rounded-[2.5rem] bg-muted/40 animate-pulse aspect-3/4" />
               ))}
             </div>
           ) : sorted.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-32 text-center gap-4 bg-white dark:bg-card rounded-[3rem] border shadow-sm">
+            <div className="flex flex-col items-center justify-center py-32 text-center gap-4 bg-white dark:bg-card rounded-[3rem] border shadow-xs">
               <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
                 <SlidersHorizontal className="h-10 w-10 text-primary" />
               </div>

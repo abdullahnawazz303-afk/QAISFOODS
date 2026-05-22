@@ -48,11 +48,11 @@ const VendorPayables = () => {
 
   const getVendorName = (id: string) => vendors.find(v => v.id === id)?.name ?? 'Unknown';
 
-  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline-solid" => {
     if (status === 'Paid') return 'default';
     if (status === 'Overdue') return 'destructive';
     if (status === 'Partially Paid') return 'secondary';
-    return 'outline';
+    return 'outline-solid';
   };
 
   const filtered = (list: VendorPayable[]) => list.filter(p => {
@@ -167,7 +167,7 @@ const VendorPayables = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Vendor Payables</h1>
-          <p className="text-sm text-muted-foreground">Track and manage vendor payments and dues</p>
+          <p className="text-sm text-muted-foreground hidden sm:block">Track and manage vendor payments and dues</p>
         </div>
       </div>
 

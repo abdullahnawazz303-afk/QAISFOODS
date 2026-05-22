@@ -117,7 +117,7 @@ export const AdminNotifications = () => {
 
   return (
     // ── Floating card — no backdrop, sits directly over dashboard content ──
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 p-4 pointer-events-none">
+      <div className="fixed inset-x-0 top-14 md:top-0 z-50 flex items-start justify-center pt-4 px-4 pointer-events-none max-h-screen overflow-y-auto">
       {/* ── Panel ─────────────────────────────────────────────────────────── */}
       <div
         className="
@@ -125,7 +125,7 @@ export const AdminNotifications = () => {
           relative w-full max-w-lg bg-background
           shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] ring-1 ring-border
           flex flex-col
-          max-h-[75vh]
+           max-h-[calc(100vh-5rem)] md:max-h-[calc(100vh-6rem)]
           animate-in fade-in slide-in-from-top-4 duration-300
         "
       >

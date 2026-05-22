@@ -156,7 +156,7 @@ export default function TrackOrder() {
         </div>
 
         {/* Search Form */}
-        <form onSubmit={handleSearch} className="bg-white dark:bg-card rounded-2xl shadow-sm border p-6 space-y-4">
+        <form onSubmit={handleSearch} className="bg-white dark:bg-card rounded-2xl shadow-xs border p-6 space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-foreground"><TranslatedText text="Phone Number" /> *</label>
             <input
@@ -164,7 +164,7 @@ export default function TrackOrder() {
               placeholder={language === 'ur' ? "03001234567" : "e.g. 03001234567"}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-left"
+              className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30 text-left"
               dir="ltr"
               required
             />
@@ -176,7 +176,7 @@ export default function TrackOrder() {
               placeholder={language === 'ur' ? "GO-20260422-0042" : "e.g. GO-20260422-0042"}
               value={ref}
               onChange={(e) => setRef(e.target.value)}
-              className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-left"
+              className="w-full h-11 px-4 rounded-xl border border-input bg-background text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30 text-left"
               dir="ltr"
             />
           </div>
@@ -224,7 +224,7 @@ export default function TrackOrder() {
                     const isCancellable = order.status === "Pending";
 
                     return (
-                      <div key={order.id} className="bg-white dark:bg-card rounded-2xl border shadow-sm overflow-hidden">
+                      <div key={order.id} className="bg-white dark:bg-card rounded-2xl border shadow-xs overflow-hidden">
                         {/* Order header */}
                         <button
                           className="w-full text-left p-5 flex items-center gap-4 hover:bg-muted/20 transition-colors"

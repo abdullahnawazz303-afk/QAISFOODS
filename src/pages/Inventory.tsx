@@ -342,7 +342,7 @@ const Inventory = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Inventory</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground hidden sm:block">
             Batch-based inventory — each purchase creates a vendor payable automatically
           </p>
         </div>

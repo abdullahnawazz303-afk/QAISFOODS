@@ -117,7 +117,7 @@ export function HeroSlider() {
           >
             {/* Left Content (Typography) */}
             <div className="order-2 lg:order-1 text-center lg:text-left flex flex-col items-center lg:items-start pt-8 lg:pt-0">
-              <span className="inline-block py-1.5 px-4 rounded-full bg-primary/10 text-primary font-bold text-xs tracking-widest uppercase mb-6 shadow-sm">
+              <span className="inline-block py-1.5 px-4 rounded-full bg-primary/10 text-primary font-bold text-xs tracking-widest uppercase mb-6 shadow-xs">
                 {t('premium_quality')}
               </span>
               <h1 
@@ -189,7 +189,7 @@ export function HeroSlider() {
       </div>
 
       {/* Decorative Bottom Curve (Matches Navbar style but reversed or used as transition) */}
-      <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-[0] z-20 transform rotate-180">
+      <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-0 z-20 transform rotate-180">
         <svg 
           data-name="Layer 1" 
           xmlns="http://www.w3.org/2000/svg" 

@@ -72,7 +72,7 @@ const RateCard = () => {
     <div className="space-y-6 max-w-5xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold">Market Rate Card</h1>
-        <p className="text-sm text-muted-foreground">Manage the baseline prices visible to your customers.</p>
+        <p className="text-sm text-muted-foreground hidden sm:block">Manage the baseline prices visible to your customers.</p>
       </div>
 
       <div className="rounded-lg border bg-card">

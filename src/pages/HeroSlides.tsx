@@ -172,7 +172,7 @@ export default function HeroSlides() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Hero Slides</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground hidden sm:block">
             Manage the homepage image slider. Changes appear live on the website.
           </p>
         </div>

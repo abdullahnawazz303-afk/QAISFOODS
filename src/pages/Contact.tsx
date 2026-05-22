@@ -166,7 +166,7 @@ export default function Contact() {
                 { icon: Mail, label: "Email", value: "info@qaisfoods.com" },
                 { icon: Clock, label: "Business Hours", value: "Mon–Sat: 9:00 AM – 6:00 PM" },
               ].map((item) => (
-                <div key={item.label} className="flex items-start gap-4 p-4 rounded-xl bg-card border border-border/50 shadow-sm">
+                <div key={item.label} className="flex items-start gap-4 p-4 rounded-xl bg-card border border-border/50 shadow-xs">
                   <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                     <item.icon className="h-5 w-5 text-primary" />
                   </div>

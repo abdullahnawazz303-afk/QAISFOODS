@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { AutoTranslationContainer } from "@/components/AutoTranslationContainer";
 import { useAuthStore } from "@/stores/authStore";
 import { useOnlineOrderStore } from "@/stores/onlineOrderStore";
 import { useCustomerStore } from "@/stores/customerStore";
 import { useRateCardStore } from "@/stores/rateCardStore";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, submitReview } from "@/integrations/supabase/client";
 import { QfLogo } from "@/components/QfLogo";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -32,7 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Trash2, Plus, LogOut, Loader2, Package,
-  User, KeyRound, ShieldCheck, Pencil, XCircle,
+  User, KeyRound, ShieldCheck, Pencil, XCircle, Menu, Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate, formatPKR, formatKG } from "@/lib/formatters";
@@ -81,6 +82,12 @@ const CustomerPortal = () => {
   const [currentPacking, setCurrentPacking] = useState("Loose");
   const [currentGrade, setCurrentGrade] = useState<Grade>("A");
   const [currentQty, setCurrentQty]     = useState("");
+
+  // ── Review state
+  const [reviewText, setReviewText]   = useState("");
+  const [reviewRole, setReviewRole]   = useState("Customer");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted]   = useState(false);
 
   // ── Dynamic item names from Supabase (synced with Admin Inventory)
   const [itemOptions, setItemOptions] = useState<string[]>([]);
@@ -233,21 +240,49 @@ const CustomerPortal = () => {
 
   const cancelTarget = orders.find(o => o.id === cancelOrderId);
 
+  // ── Submit review
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerId || !reviewText.trim()) return;
+    setReviewSubmitting(true);
+    const { error } = await submitReview({
+      customerId,
+      author: customerName || userEmail || "Customer",
+      text: reviewText.trim(),
+      role: reviewRole,
+    });
+    setReviewSubmitting(false);
+    if (error) {
+      toast.error("Failed to submit review. Please try again.");
+    } else {
+      setReviewSubmitted(true);
+      setReviewText("");
+      toast.success("Thank you! Your review has been submitted for approval.");
+    }
+  };
+
   return (
     <AutoTranslationContainer>
       <div className="min-h-screen bg-background">
 
-      {/* Top bar */}
-      <div className="border-b bg-card px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <header className="fixed inset-x-0 top-0 z-50 h-24 border-b flex items-center flex-wrap justify-between px-4 gap-3 bg-card/90 backdrop-blur-md shadow-md sm:px-6">
+          {/* Hamburger for side options */}
+          <Button variant="ghost" size="icon" className="mr-2" aria-label="Menu">
+            <Menu className="h-5 w-5" />
+          </Button>
+
+          {/* Logo and title */}
           <QfLogo className="scale-[0.65] origin-left" />
-          <div className="ml-2">
+          <div className="ml-2 flex flex-col">
             <p className="font-semibold text-sm">{customerName || "Customer Portal"}</p>
             <p className="hidden sm:block text-xs text-muted-foreground">{userEmail}</p>
           </div>
-        </div>
+
 
         <div className="flex items-center gap-2">
+          <Link to="/" className="text-sm font-semibold mr-2 hover:text-primary underline underline-offset-4 transition-colors">
+            Back to Site
+          </Link>
           <ThemeSwitcher className="h-9 w-9" />
           <LanguageSwitcher className="h-9 px-2 sm:px-3" />
           {/* Account Popover */}
@@ -387,14 +422,13 @@ const CustomerPortal = () => {
             </PopoverContent>
           </Popover>
 
-          <Button variant="ghost" size="sm" onClick={logout}
-            className="gap-2 px-2 sm:px-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+          <Button variant="ghost" size="sm" onClick={logout} className="gap-2 px-2 sm:px-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
             <LogOut className="h-4 w-4" /><span className="hidden sm:inline">Logout</span>
           </Button>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-4xl mx-auto p-4 space-y-6">
+      <div className="max-w-4xl mx-auto p-4 space-y-6 pt-28">
 
         {/* Summary cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-2">
@@ -422,6 +456,7 @@ const CustomerPortal = () => {
             <TabsTrigger value="orders" className="w-full sm:w-auto border sm:border-0 bg-muted/50 sm:bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:data-[state=active]:bg-background sm:data-[state=active]:text-foreground justify-start sm:justify-center">My Orders</TabsTrigger>
             <TabsTrigger value="rates" className="w-full sm:w-auto border sm:border-0 bg-muted/50 sm:bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:data-[state=active]:bg-background sm:data-[state=active]:text-foreground justify-start sm:justify-center">Market Rates</TabsTrigger>
             <TabsTrigger value="ledger" className="w-full sm:w-auto border sm:border-0 bg-muted/50 sm:bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:data-[state=active]:bg-background sm:data-[state=active]:text-foreground justify-start sm:justify-center">My Ledger</TabsTrigger>
+            <TabsTrigger value="review" className="w-full sm:w-auto border sm:border-0 bg-muted/50 sm:bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:data-[state=active]:bg-background sm:data-[state=active]:text-foreground justify-start sm:justify-center gap-1.5"><Star className="h-3.5 w-3.5" />Write a Review</TabsTrigger>
           </TabsList>
 
           {/* Market Rates Tab */}
@@ -683,6 +718,69 @@ const CustomerPortal = () => {
                   </TableBody>
                 </Table>
               </div>
+            )}
+          </TabsContent>
+
+          {/* Review Tab */}
+          <TabsContent value="review" className="space-y-4">
+            <div>
+              <h2 className="font-semibold">Share Your Experience</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Your review will appear on our website after approval. Only verified customers can submit reviews.
+              </p>
+            </div>
+            {reviewSubmitted ? (
+              <div className="border rounded-xl p-8 text-center bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800">
+                <Star className="h-10 w-10 mx-auto mb-3 text-green-500 fill-green-500" />
+                <p className="font-semibold text-green-700 dark:text-green-400">Thank you for your review!</p>
+                <p className="text-sm text-muted-foreground mt-1">It will appear on our site once approved by the team.</p>
+                <button
+                  onClick={() => setReviewSubmitted(false)}
+                  className="mt-4 text-sm text-primary underline underline-offset-2"
+                >
+                  Write another review
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleReviewSubmit} className="space-y-4 border rounded-xl p-6 bg-card">
+                <div className="space-y-1.5">
+                  <Label>Your Name</Label>
+                  <Input
+                    value={customerName || userEmail || ""}
+                    disabled
+                    className="bg-muted/50 text-muted-foreground"
+                  />
+                  <p className="text-xs text-muted-foreground">Your registered name will be shown with your review.</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Role / Title (optional)</Label>
+                  <Input
+                    value={reviewRole}
+                    onChange={e => setReviewRole(e.target.value)}
+                    placeholder="e.g. Shop Owner, Wholesaler, Retailer"
+                    maxLength={60}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Your Review</Label>
+                  <Textarea
+                    value={reviewText}
+                    onChange={e => setReviewText(e.target.value)}
+                    placeholder="Share your experience with QAIS Foods…"
+                    rows={5}
+                    required
+                    minLength={20}
+                    maxLength={500}
+                  />
+                  <p className="text-xs text-muted-foreground text-right">{reviewText.length}/500</p>
+                </div>
+                <Button type="submit" className="w-full" disabled={reviewSubmitting || reviewText.trim().length < 20}>
+                  {reviewSubmitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting…</> : "Submit Review"}
+                </Button>
+                <p className="text-xs text-center text-muted-foreground">
+                  Reviews are moderated and may take 1–2 days to appear publicly.
+                </p>
+              </form>
             )}
           </TabsContent>
         </Tabs>

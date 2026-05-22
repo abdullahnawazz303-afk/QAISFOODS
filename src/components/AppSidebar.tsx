@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, ShoppingCart, Users, BookOpen,
   Wallet, Landmark, FileText, BarChart3, Store, CreditCard,
-  Globe, Trash2, UserCheck, TrendingUp, X, Image, UserX
+  Globe, Trash2, UserCheck, TrendingUp, X, Image, UserX, Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import qfLogo from "@/assets/qf-logo.png";
@@ -39,8 +39,9 @@ const financeNav = [
 ];
 
 const websiteNav = [
-  { title: "Hero Slides",   url: "/hero-slides",    icon: Image },
-  { title: "Online Guest Orders",  url: "/guest-orders",   icon: UserX },
+  { title: "Hero Slides",        url: "/hero-slides",      icon: Image },
+  { title: "Online Guest Orders", url: "/guest-orders",    icon: UserX },
+  { title: "Manage Reviews",     url: "/manage-reviews",   icon: Star },
 ];
 
 import { useActiveLanguage } from "@/hooks/useActiveLanguage";
@@ -52,8 +53,8 @@ export function AppSidebar() {
   const activeLang = useActiveLanguage();
 
   // ── Live pending counts for badges
-  const [badges, setBadges] = useState<{ requests: number, bookings: number, orders: number, guestOrders: number, cheques: number }>({
-    requests: 0, bookings: 0, orders: 0, guestOrders: 0, cheques: 0
+  const [badges, setBadges] = useState<{ requests: number, bookings: number, orders: number, guestOrders: number, cheques: number, pendingReviews: number }>({
+    requests: 0, bookings: 0, orders: 0, guestOrders: 0, cheques: 0, pendingReviews: 0
   });
 
   useEffect(() => {
@@ -64,13 +65,15 @@ export function AppSidebar() {
           { count: bookings },
           { count: orders },
           { count: guestOrders },
-          { count: cheques }
+          { count: cheques },
+          { count: pendingReviews }
         ] = await Promise.all([
           supabase.from("customer_requests").select("*", { count: "exact", head: true }).eq("status", "Pending"),
           supabase.from("advance_bookings").select("*", { count: "exact", head: true }).not("status", "in", '("Completed", "Cancelled")'),
           supabase.from("online_orders").select("*", { count: "exact", head: true }).eq("status", "Pending"),
           supabase.from("guest_orders").select("*", { count: "exact", head: true }).eq("status", "Pending"),
-          supabase.from("cheques").select("*", { count: "exact", head: true }).eq("status", "Pending")
+          supabase.from("cheques").select("*", { count: "exact", head: true }).eq("status", "Pending"),
+          supabase.from("reviews").select("*", { count: "exact", head: true }).eq("is_allowed", false)
         ]);
 
         setBadges({
@@ -78,7 +81,8 @@ export function AppSidebar() {
           bookings: bookings ?? 0,
           orders: orders ?? 0,
           guestOrders: guestOrders ?? 0,
-          cheques: cheques ?? 0
+          cheques: cheques ?? 0,
+          pendingReviews: pendingReviews ?? 0
         });
       } catch (err) {
         console.error("Failed to fetch sidebar counts:", err);
@@ -99,10 +103,11 @@ export function AppSidebar() {
   const getBadgeCount = (url: string) => {
     switch (url) {
       case "/customer-requests": return badges.requests;
-      case "/advance-bookings": return badges.bookings;
-      case "/online-orders": return badges.orders;
-      case "/guest-orders": return badges.guestOrders;
-      case "/bank-cheques": return badges.cheques;
+      case "/advance-bookings":  return badges.bookings;
+      case "/online-orders":     return badges.orders;
+      case "/guest-orders":      return badges.guestOrders;
+      case "/bank-cheques":      return badges.cheques;
+      case "/manage-reviews":    return badges.pendingReviews;
       default: return 0;
     }
   };
@@ -111,7 +116,7 @@ export function AppSidebar() {
     const count = getBadgeCount(url);
     if (collapsed || count <= 0) return null;
     return (
-      <span className="ml-auto text-[11px] font-semibold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 min-w-[20px] text-center shadow-sm">
+      <span className="ml-auto text-[11px] font-semibold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 min-w-[20px] text-center shadow-xs">
         {count}
       </span>
     );

@@ -3,12 +3,16 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Trash2, Plus, LogOut, Loader2, Package,
+  User, KeyRound, ShieldCheck, Pencil, XCircle, Menu, Star } from "lucide-react";
+import { Link, BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { PublicLayout } from "@/components/PublicLayout";
 import { AppLayout } from "@/components/AppLayout";
 import ScrollToTop from "@/components/ScrollToTop";
 import { useAuthStore } from "@/stores/authStore";
 import { LanguageSync } from "@/components/LanguageSync";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 // Public pages
 import Home from "./pages/Home";
@@ -22,6 +26,7 @@ import NotFound from "./pages/NotFound";
 import AuthCallback from "./pages/AuthCallback";
 import TrackOrder from "./pages/TrackOrder";
 import ProductDetails from "./pages/ProductDetails";
+import Reviews from "./pages/Reviews";
 
 // Customer portal
 import CustomerPortal from "./pages/CustomerPortal";
@@ -46,12 +51,16 @@ import WasteManagement from "./pages/WasteManagement";
 import HeroSlides from "./pages/HeroSlides";
 import GuestOrders from "./pages/GuestOrders";
 import ManageItems from "./pages/ManageItems";
+import ManageReviews from "./pages/ManageReviews";
 
 const queryClient = new QueryClient();
 
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center text-muted-foreground">
     <div className="flex flex-col items-center gap-3">
+      <ThemeSwitcher className="h-9 w-9" />
+      <LanguageSwitcher className="h-9 px-2 sm:px-3" />
+      <Link to="/" className="text-sm underline hover:text-primary">Back to Site</Link>
       <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
       <p className="text-sm">Loading...</p>
     </div>
@@ -92,7 +101,7 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <ScrollToTop />
           <LanguageSync />
           <Routes>
@@ -106,6 +115,7 @@ const App = () => {
               <Route path="/product/:id" element={<ProductDetails />} />
               <Route path="/products" element={<Navigate to="/shop" replace />} />
               <Route path="/track-order" element={<TrackOrder />} />
+              <Route path="/reviews"  element={<Reviews />} />
             </Route>
 
             {/* ── Auth pages (no layout) ── */}
@@ -137,6 +147,7 @@ const App = () => {
             <Route path="/hero-slides"      element={<ProtectedRoute><AppLayout><HeroSlides /></AppLayout></ProtectedRoute>} />
             <Route path="/guest-orders"     element={<ProtectedRoute><AppLayout><GuestOrders /></AppLayout></ProtectedRoute>} />
             <Route path="/manage-items"     element={<ProtectedRoute><AppLayout><ManageItems /></AppLayout></ProtectedRoute>} />
+            <Route path="/manage-reviews"   element={<ProtectedRoute><AppLayout><ManageReviews /></AppLayout></ProtectedRoute>} />
 
             {/* ── Fallback ── */}
             <Route path="/index" element={<Navigate to="/" replace />} />

@@ -26,7 +26,7 @@ import { CheckCircle, XCircle, Truck, Loader2, RefreshCw, Trash2 } from "lucide-
 import { toast } from "sonner";
 import type { OnlineOrderStatus } from "@/types";
 
-const statusVariant = (s: string): "default" | "secondary" | "destructive" | "outline" => {
+const statusVariant = (s: string): "default" | "secondary" | "destructive" | "outline-solid" => {
   switch (s) {
     case "Pending":   return "secondary";
     case "Confirmed": return "default";
@@ -268,7 +268,7 @@ const OnlineOrders = () => {
               <Badge variant="destructive" className="text-xs">{pendingCount} pending</Badge>
             )}
           </h1>
-          <p className="text-sm text-muted-foreground">Orders placed by customers through the portal</p>
+          <p className="text-sm text-muted-foreground hidden sm:block">Orders placed by customers through the portal</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchOrders} disabled={loading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />

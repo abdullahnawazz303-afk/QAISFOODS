@@ -298,7 +298,7 @@ const Sales = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Sales</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground hidden sm:block">
             Record sales and track customer payments
           </p>
         </div>

@@ -179,21 +179,21 @@ export default function Products() {
             {products.map((p, i) => (
               <motion.div
                 key={p.name}
-                className="group relative rounded-2xl overflow-hidden bg-card border border-border shadow-sm"
+                className="group relative rounded-2xl overflow-hidden bg-card border border-border shadow-xs"
                 initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-30px" }}
                 transition={{ delay: (i % 3) * 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
               >
                 {/* Image */}
-                <div className="relative aspect-[4/3] overflow-hidden bg-muted img-zoom">
+                <div className="relative aspect-4/3 overflow-hidden bg-muted img-zoom">
                   <img
                     src={p.image}
                     alt={p.name}
                     loading="lazy"
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-foreground/65 via-foreground/10 to-transparent" />
+                  <div className="absolute inset-0 bg-linear-to-t from-foreground/65 via-foreground/10 to-transparent" />
 
                   {/* Badge */}
                   {p.badge && (

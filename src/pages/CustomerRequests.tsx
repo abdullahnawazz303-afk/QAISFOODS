@@ -201,7 +201,7 @@ const CustomerRequests = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Customer Requests</h1>
-          <p className="text-sm text-muted-foreground">Review new customer access requests. Approved customers get an auto-created portal.</p>
+          <p className="text-sm text-muted-foreground hidden sm:block">Review new customer access requests. Approved customers get an auto-created portal.</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchRequests} disabled={loading}>
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} /> Refresh
@@ -226,9 +226,9 @@ const CustomerRequests = () => {
         <Input placeholder="Search name, phone, email, city..."
           value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} className="sm:max-w-xs" />
         <div className="flex gap-2">
-          <Button size="sm" variant={filter === "Pending" ? "default" : "outline"}
+          <Button size="sm" variant={filter === "Pending" ? "default" : "outline-solid"}
             onClick={() => { setFilter("Pending"); setPage(0); }}>Pending ({pendingCount})</Button>
-          <Button size="sm" variant={filter === "Rejected" ? "default" : "outline"}
+          <Button size="sm" variant={filter === "Rejected" ? "default" : "outline-solid"}
             onClick={() => { setFilter("Rejected"); setPage(0); }}>Rejected ({rejectedCount})</Button>
         </div>
       </div>

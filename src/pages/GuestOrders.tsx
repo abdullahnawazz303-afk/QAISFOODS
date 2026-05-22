@@ -42,12 +42,12 @@ interface GuestOrderItem {
   quantity_kg: number;
 }
 
-const STATUS_COLORS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+const STATUS_COLORS: Record<string, "default" | "secondary" | "destructive" | "outline-solid"> = {
   Pending: "secondary",
   Approved: "default",
   Rejected: "destructive",
   Delivered: "default",
-  Converted: "outline",
+  Converted: "outline-solid",
 };
 
 export default function GuestOrders() {
@@ -255,7 +255,7 @@ export default function GuestOrders() {
               <Badge variant="destructive" className="text-xs">{pendingCount} pending</Badge>
             )}
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground hidden sm:block">
             Orders placed by non-registered customers from the public shop.
           </p>
         </div>

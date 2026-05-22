@@ -32,6 +32,8 @@ const Dashboard = () => {
     fetchCheques();
     fetchBatches();
     fetchBookings();
+    // Removed undefined notifs check; AdminNotifications handles its own visibility
+
     fetchSales();
     fetchOrders();
   }, []);
@@ -63,7 +65,7 @@ const Dashboard = () => {
       case 'Confirmed':  return 'secondary';
       case 'Processing': return 'secondary';
       case 'Delivered':  return 'default';
-      case 'Cancelled':  return 'outline';
+      case 'Cancelled':  return 'outline-solid';
       default:           return 'secondary';
     }
   };
@@ -72,11 +74,11 @@ const Dashboard = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Overview of factory operations & finances</p>
+        <p className="text-sm text-muted-foreground hidden sm:block">Overview of factory operations & finances</p>
       </div>
 
       {/* ── Company Total Balance Banner ── */}
-      <div className="rounded-lg border bg-gradient-to-r from-primary/10 via-card to-card p-5 flex items-center gap-4">
+      <div className="rounded-lg border bg-linear-to-r from-primary/10 via-card to-card p-5 flex items-center gap-4">
         <div className="h-12 w-12 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
           <Building2 className="h-6 w-6 text-primary" />
         </div>
@@ -180,7 +182,7 @@ const Dashboard = () => {
                 <TableRow>
                   <TableHead>Date</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead><span className="text-sm hidden sm:inline">Account</span></TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>

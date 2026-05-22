@@ -14,7 +14,7 @@ export const KpiCard = ({ title, value, subtitle, icon: Icon, variant = "default
   const borderColor = variant === "danger" ? "border-l-destructive" : variant === "warning" ? "border-l-warning" : "border-l-primary";
 
   return (
-    <Card className={`border-l-4 ${borderColor} border shadow-sm hover:shadow-md transition-shadow animate-fade-in`}>
+    <Card className={`border-l-4 ${borderColor} border shadow-xs hover:shadow-md transition-shadow animate-fade-in`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
           <div>

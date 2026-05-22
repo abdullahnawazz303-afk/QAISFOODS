@@ -138,7 +138,7 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
       <div className="fixed inset-0 z-50 flex justify-end">
         {/* Backdrop */}
         <motion.div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/60 backdrop-blur-xs"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -180,7 +180,7 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
           {/* Order Placed Success Screen */}
           {orderPlaced ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-5 bg-white">
-              <div className="w-28 h-28 rounded-full bg-green-50 border-[4px] border-green-100 flex items-center justify-center mb-2">
+              <div className="w-28 h-28 rounded-full bg-green-50 border-4 border-green-100 flex items-center justify-center mb-2">
                 <CheckCircle className="h-14 w-14 text-green-500" />
               </div>
               <div>
@@ -193,10 +193,10 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                   )}
                 </p>
               </div>
-              <div className="w-full rounded-[2rem] bg-primary/5 border border-primary/20 p-6 space-y-4 shadow-sm my-2">
+              <div className="w-full rounded-4xl bg-primary/5 border border-primary/20 p-6 space-y-4 shadow-xs my-2">
                 <div>
                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1"><TranslatedText text="Order Reference" /></p>
-                  <p className="text-2xl font-mono font-black text-primary tracking-widest bg-white px-3 py-1 rounded-xl shadow-sm inline-block" dir="ltr">{orderRef}</p>
+                  <p className="text-2xl font-mono font-black text-primary tracking-widest bg-white px-3 py-1 rounded-xl shadow-xs inline-block" dir="ltr">{orderRef}</p>
                 </div>
                 {deliveryDate && (
                   <div className="pt-4 border-t border-primary/10">
@@ -226,7 +226,7 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-muted/20">
             {items.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center gap-4 py-20">
-                <div className="w-24 h-24 rounded-full bg-white shadow-sm flex items-center justify-center mb-2">
+                <div className="w-24 h-24 rounded-full bg-white shadow-xs flex items-center justify-center mb-2">
                   <ShoppingBag className="h-10 w-10 text-muted-foreground/30" />
                 </div>
                 <p className="text-xl font-black text-foreground"><TranslatedText text="Your cart is empty" /></p>
@@ -245,7 +245,7 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
               items.map((item) => (
                 <div
                   key={item.itemId}
-                  className="rounded-[2rem] border border-border/50 bg-white shadow-sm overflow-hidden transition-all hover:shadow-md"
+                  className="rounded-4xl border border-border/50 bg-white shadow-xs overflow-hidden transition-all hover:shadow-md"
                 >
                   {/* Item header */}
                   <div className="flex items-center gap-4 p-4 border-b border-border/50 relative">
@@ -286,7 +286,7 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                       const entryTotal = pricePerKg * Number(entry.kgs);
 
                       return (
-                        <div key={j} className="px-3 py-2 flex flex-col gap-1 rounded-xl bg-white border border-border/40 text-sm shadow-sm">
+                        <div key={j} className="px-3 py-2 flex flex-col gap-1 rounded-xl bg-white border border-border/40 text-sm shadow-xs">
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
                               <span className="px-2 py-0.5 rounded-full bg-primary text-white text-[10px] font-black uppercase">
@@ -315,7 +315,7 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
           {items.length > 0 && (
             <div className="bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.06)] z-10 p-5 rounded-t-3xl relative">
               {/* Totals Summary */}
-              <div className="bg-primary/5 rounded-[1.5rem] p-4 mb-4 border border-primary/10">
+              <div className="bg-primary/5 rounded-3xl p-4 mb-4 border border-primary/10">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest"><TranslatedText text="Total Weight" /></span>
                   <span className="text-sm font-black text-foreground" dir="ltr">{totalKgs.toLocaleString()} {language === 'ur' ? 'کلو' : 'kg'}</span>
@@ -362,7 +362,7 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                         value={deliveryDate}
                         onChange={(e) => setDeliveryDate(e.target.value)}
                         min={new Date().toISOString().split("T")[0]}
-                        className="w-full bg-transparent text-sm font-bold focus:outline-none"
+                        className="w-full bg-transparent text-sm font-bold focus:outline-hidden"
                         dir="ltr"
                       />
                     </div>
