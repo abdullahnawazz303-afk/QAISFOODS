@@ -50,22 +50,48 @@ export default function ManageItems() {
   const [saving, setSaving] = useState(false);
   const [prices, setPrices] = useState<Record<string, string>>({});
 
+  console.log('ManageItems component mounted');
   useEffect(() => {
+    console.log('Running fetchItems and fetchRates');
     fetchItems();
     fetchRates();
+
+    // Timeout to avoid indefinite loading
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn('Loading timeout reached, clearing loading state');
+        setLoading(false);
+        toast.error('Failed to load items in time. Please try again.');
+      }
+    }, 15000); // 15 seconds
+
+    return () => clearTimeout(timeout);
   }, []);
 
   const fetchItems = async () => {
-    setLoading(true);
+  setLoading(true);
+  try {
     const { data, error } = await supabase
-      .from("item_names")
-      .select("*")
-      .eq("is_active", true)
-      .order("name", { ascending: true });
+      .from('item_names')
+      .select('*')
+      .eq('is_active', true)
+      .order('name', { ascending: true });
 
-    if (!error && data) setItems(data as ShopItem[]);
+    if (error) {
+      toast.error(`Failed to fetch items: ${error.message}`);
+      console.error('Fetch items error:', error);
+    } else if (data) {
+      console.log('Fetched items count:', data.length);
+      setItems(data as ShopItem[]);
+    }
+  } catch (e) {
+    toast.error('Unexpected error while fetching items');
+    console.error(e);
+  } finally {
     setLoading(false);
-  };
+    console.log('Fetch items completed, loading set to false');
+  }
+};
 
   const handleEdit = (item: ShopItem) => {
     setEditingItem(item);
@@ -197,7 +223,7 @@ export default function ManageItems() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Manage Products & Pricing</h1>
-          <p className="text-sm text-muted-foreground">Add products, configure their English/Urdu names, categories, store images, and rate card pricing.</p>
+          <p className="text-sm text-muted-foreground hidden sm:block">Add products, configure their English/Urdu names, categories, store images, and rate card pricing.</p>
         </div>
         <Button onClick={handleAddNewList}>
           <Plus className="h-4 w-4 mr-2" />
@@ -269,10 +295,10 @@ export default function ManageItems() {
       </div>
 
       <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto" aria-labelledby="manage-items-dialog-title" aria-describedby="manage-items-dialog-description">
           <DialogHeader>
-            <DialogTitle>{editingItem?.id === "NEW" ? "Add New Product" : "Edit Product Details"}</DialogTitle>
-            <DialogDescription>Update the product listing information</DialogDescription>
+            <DialogTitle id="manage-items-dialog-title">{editingItem?.id === "NEW" ? "Add New Product" : "Edit Product Details"}</DialogTitle>
+            <DialogDescription id="manage-items-dialog-description">Update the product listing information</DialogDescription>
           </DialogHeader>
 
           {editingItem && (

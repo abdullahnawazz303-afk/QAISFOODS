@@ -127,9 +127,9 @@ export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalPro
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" dir={dir}>
+      <div className="fixed inset-0 z-60 flex items-center justify-center p-4" dir={dir}>
         <motion.div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/60 backdrop-blur-xs"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -200,7 +200,7 @@ export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalPro
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder={language === 'ur' ? "مثال: احمد علی" : "e.g. Ahmad Ali"}
-                    className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30"
                   />
                 </div>
 
@@ -215,7 +215,7 @@ export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalPro
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder={language === 'ur' ? "0300-1234567" : "e.g. 0300-1234567"}
-                    className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-left"
+                    className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30 text-left"
                     dir="ltr"
                   />
                 </div>
@@ -230,7 +230,7 @@ export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalPro
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={language === 'ur' ? "ahmad@example.com" : "e.g. ahmad@example.com"}
-                    className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-left"
+                    className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30 text-left"
                     dir="ltr"
                   />
                 </div>
@@ -245,7 +245,7 @@ export function GuestCheckoutModal({ onClose, onSuccess }: GuestCheckoutModalPro
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder={language === 'ur' ? "گلی، شہر، صوبہ" : "Street, City, Province"}
                     rows={2}
-                    className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                    className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-hidden focus:ring-2 focus:ring-primary/30 resize-none"
                   />
                 </div>
 

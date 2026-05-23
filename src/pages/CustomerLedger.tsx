@@ -111,7 +111,7 @@ const openPayDialog = (saleId: string, outstanding: number) => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Customer Ledger</h1>
-          <p className="text-sm text-muted-foreground">View customer transaction history</p>
+          <p className="text-sm text-muted-foreground hidden sm:block">View customer transaction history</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => window.print()}>

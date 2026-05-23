@@ -61,7 +61,7 @@ export function AddToCartModal({ item, onClose }: AddToCartModalProps) {
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
         {/* Backdrop */}
         <motion.div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/60 backdrop-blur-xs"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -114,7 +114,7 @@ export function AddToCartModal({ item, onClose }: AddToCartModalProps) {
                   const rate = itemRates.find(r => r.grade === g);
                   if (!rate) return null;
                   return (
-                    <span key={g} className="text-xs font-semibold bg-white border border-primary/20 px-3 py-1.5 rounded-full shadow-sm text-foreground whitespace-nowrap">
+                    <span key={g} className="text-xs font-semibold bg-white border border-primary/20 px-3 py-1.5 rounded-full shadow-xs text-foreground whitespace-nowrap">
                       Grade {g} <span className="text-primary mx-1">•</span> Rs. {rate.price_per_kg}
                     </span>
                   )
@@ -136,7 +136,7 @@ export function AddToCartModal({ item, onClose }: AddToCartModalProps) {
               return (
                 <div
                   key={i}
-                  className="rounded-3xl border-2 border-primary/10 bg-white p-5 space-y-4 shadow-sm relative transition-all hover:border-primary/30"
+                  className="rounded-3xl border-2 border-primary/10 bg-white p-5 space-y-4 shadow-xs relative transition-all hover:border-primary/30"
                 >
                   <div className="flex items-center justify-between border-b border-border/50 pb-3">
                     <span className="text-xs font-bold text-primary uppercase tracking-widest bg-primary/10 px-3 py-1 rounded-full">
@@ -159,7 +159,7 @@ export function AddToCartModal({ item, onClose }: AddToCartModalProps) {
                       <select
                         value={entry.grade}
                         onChange={(e) => updateEntry(i, "grade", e.target.value)}
-                        className="w-full h-12 px-4 rounded-xl border-2 border-input bg-background font-medium focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer"
+                        className="w-full h-12 px-4 rounded-xl border-2 border-input bg-background font-medium focus:outline-hidden focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer"
                       >
                         {GRADE_OPTIONS.map((g) => (
                           <option key={g} value={g}>Grade {g}</option>
@@ -173,7 +173,7 @@ export function AddToCartModal({ item, onClose }: AddToCartModalProps) {
                       <select
                         value={entry.packing}
                         onChange={(e) => updateEntry(i, "packing", e.target.value)}
-                        className="w-full h-12 px-4 rounded-xl border-2 border-input bg-background font-medium focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer"
+                        className="w-full h-12 px-4 rounded-xl border-2 border-input bg-background font-medium focus:outline-hidden focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer"
                       >
                         {PACKING_OPTIONS.map((p) => (
                           <option key={p} value={p}>{p} bags</option>
@@ -191,7 +191,7 @@ export function AddToCartModal({ item, onClose }: AddToCartModalProps) {
                         value={entry.kgs || ""}
                         onChange={(e) => updateEntry(i, "kgs", Number(e.target.value))}
                         placeholder="0.0"
-                        className="w-full h-12 px-4 rounded-xl border-2 border-input bg-background font-bold text-lg focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
+                        className="w-full h-12 px-4 rounded-xl border-2 border-input bg-background font-bold text-lg focus:outline-hidden focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
                       />
                     </div>
                   </div>

@@ -223,7 +223,7 @@ export default function WasteManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Waste Management</h1>
-          <p className="text-sm text-muted-foreground">Track cleansing process waste from vendor batches</p>
+          <p className="text-sm text-muted-foreground hidden sm:block">Track cleansing process waste from vendor batches</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={v => {
           setDialogOpen(v);

@@ -140,7 +140,7 @@ const BankCheques = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Bank & Cheques</h1>
-          <p className="text-sm text-muted-foreground">Manage cheque issuance and status tracking</p>
+          <p className="text-sm text-muted-foreground hidden sm:block">Manage cheque issuance and status tracking</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>

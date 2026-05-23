@@ -58,7 +58,7 @@ const VendorPaymentDialog = ({
   const getStatusVariant = (payable: VendorPayable) => {
     if (payable.status === 'Overdue') return 'destructive';
     if (payable.status === 'Partially Paid') return 'secondary';
-    return 'outline';
+    return 'outline-solid';
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {

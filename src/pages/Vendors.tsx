@@ -133,7 +133,7 @@ const Vendors = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Vendors</h1>
-          <p className="text-sm text-muted-foreground">Manage supplier list and payments</p>
+          <p className="text-sm text-muted-foreground hidden sm:block">Manage supplier list and payments</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>

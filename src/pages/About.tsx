@@ -92,7 +92,7 @@ export default function About() {
       <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0">
           <img src={aboutImg} alt="Our factory" className="w-full h-full object-cover" loading="eager" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-black/85" />
+          <div className="absolute inset-0 bg-linear-to-b from-black/80 via-black/60 to-black/85" />
         </div>
         <motion.div
           className="relative text-center px-4 py-28 md:py-40"
@@ -103,7 +103,7 @@ export default function About() {
           <span className="inline-block text-xs font-black text-white uppercase tracking-[0.25em] mb-5 px-6 py-2 rounded-full bg-primary shadow-xl">
             <TranslatedText text="Since 2010" />
           </span>
-          <h1 className="text-5xl md:text-6xl lg:text-8xl font-display font-bold text-white mb-5 tracking-tight uppercase leading-[1.0]">
+          <h1 className="text-5xl md:text-6xl lg:text-8xl font-display font-bold text-white mb-5 tracking-tight uppercase leading-none">
             <TranslatedText text="About Our Factory" />
           </h1>
           <p className="text-lg text-white/70 max-w-2xl mx-auto leading-relaxed">
@@ -163,7 +163,7 @@ export default function About() {
                 custom={i}
                 variants={fadeUp}
               >
-                <Card className="h-full rounded-2xl border border-border shadow-sm hover:bg-secondary/20 transition-colors">
+                <Card className="h-full rounded-2xl border border-border shadow-xs hover:bg-secondary/20 transition-colors">
                   <CardContent className="p-8 flex gap-5">
                     <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
                       <v.icon className="h-7 w-7 text-primary" />

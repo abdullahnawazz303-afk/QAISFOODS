@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { ShoppingBag, Package, Eye, Award } from "lucide-react";
 import { Link } from "react-router-dom";
 
+
 export interface ShopItem {
   id: string;
   name: string;           // Urdu
@@ -48,19 +49,20 @@ export function ProductCard({
     : (item.english_name || item.name || "Unknown Product");
 
 
+
   return (
-    <Link to={`/product/${item.id || item.name}`} className="block h-full outline-none" dir={activeLang === 'ur' ? 'rtl' : 'ltr'}>
+    <Link to={`/product/${item.id || item.name}`} className="block h-full outline-hidden" dir={activeLang === 'ur' ? 'rtl' : 'ltr'}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-20px" }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="group bg-white dark:bg-card rounded-2xl border border-transparent dark:border-border/30 shadow-sm hover:shadow-2xl hover:border-primary/20 overflow-hidden transition-all duration-500 h-full flex flex-col relative product-card"
+        className="group bg-white dark:bg-card rounded-2xl border border-border/40 dark:border-border/10 shadow-md hover:border-primary/30 overflow-hidden h-full flex flex-col relative product-card smooth-scale-transition premium-card-glow premium-emerald-glow"
       >
         {/* Image area */}
-        <div className="relative aspect-[4/3] sm:aspect-square overflow-hidden bg-muted/30">
+        <div className="relative aspect-4/3 sm:aspect-square overflow-hidden bg-linear-to-br from-primary/5 via-transparent to-muted/20">
           {isTopSeller && (
-            <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-gradient-to-r from-amber-500 via-orange-500 to-red-600 text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-lg border border-white/20">
+            <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-linear-to-r from-amber-500 via-orange-500 to-red-600 text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-lg border border-white/20">
               <Award className="h-3.5 w-3.5" />
               <span>{activeLang === 'ur' ? 'سب سے زیادہ مقبول' : 'Best Seller'}</span>
             </div>
@@ -71,19 +73,26 @@ export function ProductCard({
               src={item.image_url}
               alt={displayName}
               loading="lazy"
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+              className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 ease-out"
               onError={() => setImgError(true)}
             />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-              <Package className="h-12 w-12 text-primary/20" />
+            <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-linear-to-br from-primary/10 via-emerald-500/5 to-muted/30 relative">
+              {/* Artistic stylized fallback background */}
+              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#10b981_1.5px,transparent_1.5px)] bg-size-[16px_16px]" />
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center shadow-inner relative z-10 animate-soft-pulse">
+                <Package className="h-8 w-8 text-primary" />
+              </div>
+              <span className="text-[10px] font-black text-primary/75 uppercase tracking-widest relative z-10">
+                {activeLang === 'ur' ? 'معیاری پروڈکٹ' : 'Premium Grains'}
+              </span>
             </div>
           )}
 
           {/* Quick View Overlay */}
-          <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4 pointer-events-none">
-            <div className="bg-white/95 dark:bg-card/95 backdrop-blur-md px-4 py-2 rounded-full shadow-lg flex items-center gap-2 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
-              <Eye className="h-4 w-4 text-primary" />
+          <div className="absolute inset-0 bg-black/15 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4 pointer-events-none z-10">
+            <div className="bg-white/95 dark:bg-card/95 backdrop-blur-md px-5 py-2.5 rounded-full shadow-lg flex items-center gap-2 transform translate-y-3 group-hover:translate-y-0 transition-transform duration-300 border border-primary/10">
+              <Eye className="h-4 w-4 text-primary animate-pulse" />
               <span className="text-[10px] font-black uppercase tracking-widest text-foreground">
                 {activeLang === 'ur' ? 'فوری دیکھیں' : 'Quick View'}
               </span>

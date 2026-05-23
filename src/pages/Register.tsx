@@ -31,7 +31,7 @@ const Register = () => {
 
         <div className="space-y-3">
 
-          <div className="rounded-xl border bg-card p-4 flex gap-3 items-start shadow-sm">
+          <div className="rounded-xl border bg-card p-4 flex gap-3 items-start shadow-xs">
             <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
               <UserCheck className="h-4 w-4 text-primary" />
             </div>
@@ -43,7 +43,7 @@ const Register = () => {
             </div>
           </div>
 
-          <div className="rounded-xl border bg-card p-4 flex gap-3 items-start shadow-sm">
+          <div className="rounded-xl border bg-card p-4 flex gap-3 items-start shadow-xs">
             <div className="mt-0.5 w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
               <Building2 className="h-4 w-4 text-amber-600" />
             </div>
@@ -55,7 +55,7 @@ const Register = () => {
             </div>
           </div>
 
-          <div className="rounded-xl border bg-card p-4 flex gap-3 items-start shadow-sm">
+          <div className="rounded-xl border bg-card p-4 flex gap-3 items-start shadow-xs">
             <div className="mt-0.5 w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
               <KeyRound className="h-4 w-4 text-green-600" />
             </div>

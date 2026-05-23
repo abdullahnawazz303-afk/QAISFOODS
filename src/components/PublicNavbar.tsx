@@ -30,6 +30,7 @@ export function PublicNavbar() {
   const navLinks = [
     { label: t("shop"), to: "/shop" },
     { label: t("track_order"), to: "/track-order" },
+    { label: "Reviews", to: "/reviews" },
     { label: t("about"), to: "/about" },
     { label: t("contact"), to: "/contact" },
   ];
@@ -49,7 +50,7 @@ export function PublicNavbar() {
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }
                 }}
-                className="absolute top-4 left-0 flex items-center z-10 group bg-white dark:bg-card rounded-br-[2rem] rounded-tr-[2rem] px-5 py-2.5 md:px-7 md:py-3.5 border-r border-y border-border/50 dark:border-border shadow-xl transition-transform hover:translate-x-1 hover:shadow-2xl"
+                className="absolute top-4 left-0 flex items-center z-10 group bg-white dark:bg-card rounded-br-4xl rounded-tr-4xl px-5 py-2.5 md:px-7 md:py-3.5 border-r border-y border-border/50 dark:border-border shadow-xl transition-transform hover:translate-x-1 hover:shadow-2xl"
               >
                 <QfLogo className="group-hover:opacity-90 transition-opacity" />
               </Link>
@@ -92,7 +93,7 @@ export function PublicNavbar() {
               >
                 <ShoppingBag className="h-5 w-5" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white text-primary text-[11px] font-black flex items-center justify-center shadow-sm">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white text-primary text-[11px] font-black flex items-center justify-center shadow-xs">
                     {cartCount}
                   </span>
                 )}
@@ -179,7 +180,7 @@ export function PublicNavbar() {
               >
                 <ShoppingBag className="h-5 w-5" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white text-primary text-[11px] font-black flex items-center justify-center shadow-sm">
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-white text-primary text-[11px] font-black flex items-center justify-center shadow-xs">
                     {cartCount}
                   </span>
                 )}
@@ -195,7 +196,7 @@ export function PublicNavbar() {
           </div>
 
           {/* Decorative Curved Bottom Edge (SVG) */}
-          <div className="absolute -bottom-[20px] left-0 w-full overflow-hidden leading-[0] z-[-1]">
+          <div className="absolute bottom-[-20px] left-0 w-full overflow-hidden leading-0 z-[-1]">
             <svg 
               data-name="Layer 1" 
               xmlns="http://www.w3.org/2000/svg" 
@@ -214,7 +215,7 @@ export function PublicNavbar() {
         {/* Mobile menu */}
         <AnimatePresence>
           {mobileOpen && (
-            <div className="lg:hidden absolute top-[100%] left-0 w-full bg-primary dark:bg-card border-t border-white/10 dark:border-border/30 px-5 pb-6 pt-4 space-y-2 shadow-2xl z-40 rounded-b-3xl">
+            <div className="lg:hidden absolute top-full left-0 w-full bg-primary dark:bg-card border-t border-white/10 dark:border-border/30 px-5 pb-6 pt-4 space-y-2 shadow-2xl z-40 rounded-b-3xl">
               {/* Theme & Language Switchers for Mobile */}
               <div className="flex items-center justify-between border-b border-white/10 dark:border-border/30 pb-4 mb-4 text-white/90">
                 <span className="text-xs font-black uppercase tracking-widest text-white/60 dark:text-muted-foreground">
