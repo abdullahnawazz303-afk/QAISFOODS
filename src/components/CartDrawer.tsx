@@ -338,12 +338,12 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
 
               {/* Note for unauthenticated users */}
               {!isLoggedIn && (
-                <div className="flex items-start gap-2 p-3 mb-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
-                  <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                <div className="flex items-start gap-2 p-3 mb-4 rounded-xl bg-primary/5 border border-primary/20 text-xs text-primary">
+                  <ShoppingBag className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
                   <span className="font-medium leading-relaxed">
                     {language === 'ur' 
-                      ? 'آرڈر چیک آؤٹ کرنے کے لیے لاگ ان ہونا ضروری ہے۔' 
-                      : 'You must log in to proceed and checkout your wholesale order.'}
+                      ? 'آپ بطور مہمان آرڈر کر سکتے ہیں یا آرڈر ہسٹری محفوظ کرنے کے لیے لاگ ان کر سکتے ہیں۔' 
+                      : 'You can place order instantly as a Guest, or login to save order history.'}
                   </span>
                 </div>
               )}
@@ -381,17 +381,27 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
                     <TranslatedText text="Staff accounts cannot place customer orders from the shop." />
                   </div>
                 ) : (
-                  // ── Not logged in: login required
-                  <button
-                    onClick={() => {
-                      onClose();
-                      navigate(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
-                    }}
-                    className="w-full h-14 rounded-full bg-primary text-white font-black text-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-xl hover:-translate-y-1 hover:shadow-2xl"
-                  >
-                    <ExternalLink className={`h-5 w-5 ${language === 'ur' ? 'ml-1 rotate-180' : 'mr-1'}`} />
-                    <span>{language === 'ur' ? 'چیک آؤٹ کے لیے لاگ ان کریں' : 'Login to Checkout'}</span>
-                  </button>
+                  // ── Not logged in: guest checkout or login
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => setShowGuest(true)}
+                      className="w-full h-14 rounded-full bg-primary text-white font-black text-lg flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-xl hover:-translate-y-1 hover:shadow-2xl"
+                    >
+                      <ShoppingBag className="h-5 w-5" />
+                      <span>{language === 'ur' ? 'بطور مہمان آرڈر کریں' : 'Checkout as Guest'}</span>
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        onClose();
+                        navigate(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+                      }}
+                      className="w-full h-12 rounded-full border border-primary/30 text-primary font-bold flex items-center justify-center gap-2 hover:bg-primary/5 transition-all text-sm shadow-sm"
+                    >
+                      <ExternalLink className={`h-4 w-4 ${language === 'ur' ? 'ml-1 rotate-180' : 'mr-1'}`} />
+                      <span>{language === 'ur' ? 'یا لاگ ان / سائن اپ کریں' : 'Or Login / Sign Up'}</span>
+                    </button>
+                  </div>
                 )}
                 
                 <button
