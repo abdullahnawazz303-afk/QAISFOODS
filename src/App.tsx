@@ -3,8 +3,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Trash2, Plus, LogOut, Loader2, Package,
-  User, KeyRound, ShieldCheck, Pencil, XCircle, Menu, Star } from "lucide-react";
 import { Link, BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { PublicLayout } from "@/components/PublicLayout";
 import { AppLayout } from "@/components/AppLayout";
@@ -13,6 +11,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { LanguageSync } from "@/components/LanguageSync";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { BackToClientSiteLink } from "@/components/BackToClientSiteLink";
 
 // Public pages
 import Home from "./pages/Home";
@@ -60,7 +59,7 @@ const LoadingScreen = () => (
     <div className="flex flex-col items-center gap-3">
       <ThemeSwitcher className="h-9 w-9" />
       <LanguageSwitcher className="h-9 px-2 sm:px-3" />
-      <Link to="/" className="text-sm underline hover:text-primary">Back to Site</Link>
+      <BackToClientSiteLink variant="link" />
       <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
       <p className="text-sm">Loading...</p>
     </div>
@@ -94,7 +93,9 @@ function CustomerRoute({ children }: { children: React.ReactNode }) {
 const App = () => {
   const restoreSession = useAuthStore((s) => s.restoreSession);
 
-  useEffect(() => { restoreSession(); }, []);
+  useEffect(() => {
+    void restoreSession();
+  }, [restoreSession]);
 
   return (
     <QueryClientProvider client={queryClient}>

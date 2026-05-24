@@ -1,6 +1,11 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { supabase, setFeaturedReview, unsetFeaturedReview } from "@/integrations/supabase/client";
+import {
+  supabase,
+  setFeaturedReview,
+  unsetFeaturedReview,
+  markReviewsApprovalColumnAvailable,
+} from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -48,6 +53,8 @@ export default function ManageReviews() {
       setLoading(false);
       return;
     }
+
+    markReviewsApprovalColumnAvailable();
 
     // Fetch featured positions
     const { data: featuredData } = await supabase

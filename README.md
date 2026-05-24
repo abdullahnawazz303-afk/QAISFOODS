@@ -1,40 +1,42 @@
-# Lentil Factory Operations & Financial Credit Management System (LFO-FCMS)
+# QAIS Foods — Lentil Factory ERP & Portal (LFO-FCMS)
 
-## Purpose
-The Lentil Factory Operations & Financial Credit Management System (LFO-FCMS) is a comprehensive, centralized software solution designed to digitize, formalize, and optimize the end-to-end operations of a lentil manufacturing and processing factory. The primary goal is to replace manual processes, reduce errors, improve transparency, and provide real-time visibility into the factory's inventory, sales, and financial activities.
+University lab project: public wholesale shop, customer portal, and internal ERP.
 
-## Project Needs
-A lentil factory operates with numerous moving parts: raw material procurement, processing, packaging, complex financial tracking, and relationship management with both vendors and customers. Managing these aspects manually or through disconnected tools leads to inefficiencies, data discrepancies, and poor financial control.
+## Quick start (instructor / evaluator)
 
-This software addresses these needs by providing a unified ERP (Enterprise Resource Planning) platform tailored specifically to the lentil production industry. It requires a robust frontend for user interaction (dashboard/portals) and a secure, scalable backend (Supabase) to handle data storage, authentication, and real-time syncing.
+**Requirements:** Node.js 18+, npm
 
-## Core Functionalities
+```bash
+npm install
+npm run dev
+```
 
-### 1. Inventory & Production Management
-*   **Raw Material Tracking:** Managing the procurement and stock levels of unprocessed lentils.
-*   **Processing & Packaging:** Tracking the transformation of raw materials into finished products.
-*   **Waste Management:** Monitoring and optimizing the waste or by-products generated during processing.
+Open **http://localhost:5000**
 
-### 2. Financial & Credit Management (FCMS)
-*   **Cash Flow (Rokar):** Daily cash book tracking for in/out transactions.
-*   **Bank & Cheques Management:** Logging bank deposits, withdrawals, and tracking the status of post-dated or cleared cheques.
-*   **Vendor Payables:** Tracking amounts owed to suppliers for raw materials and services.
-*   **General Ledgers:** Detailed, segregated ledgers for individual vendors and customers to track credits, debits, and running balances.
+`npm install` automatically creates `.env` from `.env.example` (lab Supabase keys included).
 
-### 3. Sales & Order Management
-*   **Sales Tracking:** Recording B2B and wholesale transactions.
-*   **Advance Bookings:** Managing pre-orders and advance payments from clients.
-*   **Online Orders:** Processing orders placed through web portals or digital channels.
+## Students
 
-### 4. CRM & Portals
-*   **Customer & Vendor Profiles:** Centralized database of all trading partners.
-*   **Customer Portal:** A dedicated, restricted-access area where designated customers can view their ledgers, outstanding balances, and order history.
-*   **Role-Based Access Control:** Distinct dashboard views based on user roles (e.g., Administrator, Staff, Customer).
+Submit your `.env` file when the instructor asks. To use your own Supabase project, replace the values in `.env` after install.
 
-### 5. Reporting & Analytics
-*   **Dashboard:** Real-time metrics and KPIs summarizing factory performance, outstanding debts, and inventory levels.
-*   **Comprehensive Reports:** Generation of data summaries for auditing and strategic decision-making.
+## Stack
 
-## Technology Stack
-*   **Frontend:** React, TypeScript, Vite, Tailwind CSS, shadcn-ui, Zustand (State Management), React Query.
-*   **Backend:** Supabase (PostgreSQL, Authentication, Row Level Security).
+- React 19 · TypeScript · Vite 5 · Tailwind CSS 4 · shadcn/ui
+- Zustand · TanStack Query · Supabase
+
+## Documentation
+
+See **[AGENTS.md](./AGENTS.md)** for routes, roles, and troubleshooting.
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm install` | Install deps + create `.env` if missing |
+| `npm run dev` | Dev server (port 5000) |
+| `npm run build` | Production build |
+
+## Notes
+
+- Use **npm only** — do not run `pnpm install` in this folder.
+- SQL migrations are in the repo root for Supabase setup.

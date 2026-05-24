@@ -18,7 +18,7 @@ import {
   SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -34,12 +34,26 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Trash2, Plus, LogOut, Loader2, Package,
   User, KeyRound, ShieldCheck, Pencil, XCircle, Menu, Star,
+  BookOpen, TrendingUp,
 } from "lucide-react";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
+} from "@/components/ui/sheet";
+import { BackToClientSiteLink } from "@/components/BackToClientSiteLink";
 import { toast } from "sonner";
 import { formatDate, formatPKR, formatKG } from "@/lib/formatters";
 import type { Grade, OnlineOrderItem } from "@/types";
 
 const GRADE_OPTIONS: Grade[] = ["A+", "A", "B", "C"];
+
+const PORTAL_NAV = [
+  { value: "orders", label: "My Orders", icon: Package },
+  { value: "rates", label: "Market Rates", icon: TrendingUp },
+  { value: "ledger", label: "My Ledger", icon: BookOpen },
+  { value: "review", label: "Write a Review", icon: Star },
+] as const;
+
+type PortalTab = (typeof PORTAL_NAV)[number]["value"];
 
 const statusVariant = (s: string) => {
   switch (s) {
@@ -91,6 +105,9 @@ const CustomerPortal = () => {
 
   // ── Dynamic item names from Supabase (synced with Admin Inventory)
   const [itemOptions, setItemOptions] = useState<string[]>([]);
+
+  const [activeTab, setActiveTab] = useState<PortalTab>("orders");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     const fetchItemNames = async () => {
@@ -265,24 +282,66 @@ const CustomerPortal = () => {
     <AutoTranslationContainer>
       <div className="min-h-screen bg-background">
 
-        <header className="fixed inset-x-0 top-0 z-50 h-24 border-b flex items-center flex-wrap justify-between px-4 gap-3 bg-card/90 backdrop-blur-md shadow-md sm:px-6">
-          {/* Hamburger for side options */}
-          <Button variant="ghost" size="icon" className="mr-2" aria-label="Menu">
-            <Menu className="h-5 w-5" />
-          </Button>
+        <header className="fixed inset-x-0 top-0 z-50 h-16 sm:h-20 border-b flex items-center justify-between px-4 gap-3 bg-card/95 backdrop-blur-md shadow-sm sm:px-6">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="shrink-0 md:hidden" aria-label="Open portal menu">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[min(100vw-2rem,20rem)] p-0 flex flex-col">
+                <SheetHeader className="p-4 border-b text-left">
+                  <SheetTitle className="text-base">Customer Portal</SheetTitle>
+                  <p className="text-xs text-muted-foreground truncate">{customerName || userEmail}</p>
+                </SheetHeader>
+                <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+                  {PORTAL_NAV.map(({ value, label, icon: Icon }) => (
+                    <Button
+                      key={value}
+                      variant={activeTab === value ? "secondary" : "ghost"}
+                      className="w-full justify-start gap-3 h-11"
+                      onClick={() => {
+                        setActiveTab(value);
+                        setMobileNavOpen(false);
+                      }}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      {label}
+                    </Button>
+                  ))}
+                </nav>
+                <div className="p-3 border-t space-y-1">
+                  <div onClick={() => setMobileNavOpen(false)}>
+                    <BackToClientSiteLink
+                      variant="ghost"
+                      className="w-full justify-start h-10 px-3 font-normal"
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start gap-3 h-10 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => {
+                      setMobileNavOpen(false);
+                      logout();
+                    }}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
 
-          {/* Logo and title */}
-          <QfLogo className="scale-[0.65] origin-left" />
-          <div className="ml-2 flex flex-col">
-            <p className="font-semibold text-sm">{customerName || "Customer Portal"}</p>
-            <p className="hidden sm:block text-xs text-muted-foreground">{userEmail}</p>
+            <QfLogo className="scale-[0.55] sm:scale-[0.65] origin-left shrink-0" />
+            <div className="min-w-0 hidden sm:block">
+              <p className="font-semibold text-sm truncate">{customerName || "Customer Portal"}</p>
+              <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+            </div>
           </div>
 
-
-        <div className="flex items-center gap-2">
-          <Link to="/" className="text-sm font-semibold mr-2 hover:text-primary underline underline-offset-4 transition-colors">
-            Back to Site
-          </Link>
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <BackToClientSiteLink variant="ghost" className="mr-1" />
           <ThemeSwitcher className="h-9 w-9" />
           <LanguageSwitcher className="h-9 px-2 sm:px-3" />
           {/* Account Popover */}
@@ -428,7 +487,7 @@ const CustomerPortal = () => {
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto p-4 space-y-6 pt-28">
+      <div className="max-w-4xl mx-auto p-4 space-y-6 pt-20 sm:pt-24">
 
         {/* Summary cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-2">
@@ -450,14 +509,21 @@ const CustomerPortal = () => {
           </div>
         </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="orders">
-          <TabsList className="w-full sm:w-auto flex flex-col sm:flex-row h-auto sm:h-10 gap-1 sm:gap-0 bg-transparent sm:bg-muted p-0 sm:p-1 items-stretch">
-            <TabsTrigger value="orders" className="w-full sm:w-auto border sm:border-0 bg-muted/50 sm:bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:data-[state=active]:bg-background sm:data-[state=active]:text-foreground justify-start sm:justify-center">My Orders</TabsTrigger>
-            <TabsTrigger value="rates" className="w-full sm:w-auto border sm:border-0 bg-muted/50 sm:bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:data-[state=active]:bg-background sm:data-[state=active]:text-foreground justify-start sm:justify-center">Market Rates</TabsTrigger>
-            <TabsTrigger value="ledger" className="w-full sm:w-auto border sm:border-0 bg-muted/50 sm:bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:data-[state=active]:bg-background sm:data-[state=active]:text-foreground justify-start sm:justify-center">My Ledger</TabsTrigger>
-            <TabsTrigger value="review" className="w-full sm:w-auto border sm:border-0 bg-muted/50 sm:bg-transparent data-[state=active]:bg-primary data-[state=active]:text-primary-foreground sm:data-[state=active]:bg-background sm:data-[state=active]:text-foreground justify-start sm:justify-center gap-1.5"><Star className="h-3.5 w-3.5" />Write a Review</TabsTrigger>
+        {/* Tabs — desktop tab bar; mobile uses hamburger menu */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as PortalTab)}>
+          <TabsList className="hidden md:flex w-auto h-10 gap-0 bg-muted p-1 items-stretch">
+            <TabsTrigger value="orders">My Orders</TabsTrigger>
+            <TabsTrigger value="rates">Market Rates</TabsTrigger>
+            <TabsTrigger value="ledger">My Ledger</TabsTrigger>
+            <TabsTrigger value="review" className="gap-1.5">
+              <Star className="h-3.5 w-3.5" />
+              Write a Review
+            </TabsTrigger>
           </TabsList>
+
+          <p className="md:hidden text-sm text-muted-foreground px-1">
+            {PORTAL_NAV.find((n) => n.value === activeTab)?.label}
+          </p>
 
           {/* Market Rates Tab */}
           <TabsContent value="rates" className="space-y-4">
@@ -519,16 +585,19 @@ const CustomerPortal = () => {
                   <Button size="sm"><Plus className="h-4 w-4 mr-2" /> Place Order</Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                  <DialogHeader><DialogTitle>Place New Order</DialogTitle></DialogHeader>
+                  <DialogHeader>
+                    <DialogTitle>Place New Order</DialogTitle>
+                    <DialogDescription>Add items and submit your wholesale order.</DialogDescription>
+                  </DialogHeader>
                   <form onSubmit={handleOrderSubmit} className="space-y-4">
                     <div className="border rounded-lg p-3 space-y-3">
                       <h4 className="font-medium text-sm">Order Items</h4>
                       
                       {/* Added Items List */}
                       {orderItems.map((item, idx) => (
-                        <div key={idx} className="grid grid-cols-[1fr_80px_1fr_1fr_40px] gap-2 items-center bg-muted/50 rounded-md border p-2 text-sm transition-all hover:bg-muted">
+                        <div key={idx} className="flex flex-col sm:grid sm:grid-cols-[1fr_80px_1fr_1fr_40px] gap-2 sm:items-center bg-muted/50 rounded-md border p-3 sm:p-2 text-sm transition-all hover:bg-muted">
                           <span className="font-medium truncate">{item.itemName}</span>
-                          <span className="text-muted-foreground">Grade {item.grade}</span>
+                          <span className="text-muted-foreground text-xs sm:text-sm">Grade {item.grade}</span>
                           <div>
                             {item.packing && item.packing !== "Loose" ? (
                               <Badge variant="secondary" className="font-normal">{item.packing}</Badge>
@@ -536,8 +605,8 @@ const CustomerPortal = () => {
                               <span className="text-muted-foreground text-xs">Loose</span>
                             )}
                           </div>
-                          <span className="font-medium text-right pr-2">{formatKG(item.quantity)}</span>
-                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => removeOrderItem(idx)}>
+                          <span className="font-medium sm:text-right sm:pr-2">{formatKG(item.quantity)}</span>
+                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 self-end sm:self-auto text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => removeOrderItem(idx)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -789,7 +858,10 @@ const CustomerPortal = () => {
       {/* ── Cancel Order Confirmation Dialog ── */}
       <Dialog open={!!cancelOrderId} onOpenChange={v => { if (!v) setCancelOrderId(null); }}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Cancel Order</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Cancel Order</DialogTitle>
+            <DialogDescription>This action cannot be undone.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Are you sure you want to cancel order{" "}

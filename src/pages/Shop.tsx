@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform, useMotionValueEvent } from "framer-motion";
 import { Search, ShoppingBag, Package, X, SlidersHorizontal, ArrowRight, Flame, Award } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRateCardStore } from "@/stores/rateCardStore";
@@ -32,6 +32,15 @@ export default function Shop() {
   const [minPrice, setMinPrice] = useState<number | "">("");
   const [maxPrice, setMaxPrice] = useState<number | "">("");
   const [sortBy, setSortBy] = useState<"none" | "price-asc" | "price-desc" | "name-asc">("none");
+  const [filtersInteractive, setFiltersInteractive] = useState(true);
+
+  const { scrollY } = useScroll();
+  const filterOpacity = useTransform(scrollY, [0, 48, 128], [1, 1, 0]);
+  const filterY = useTransform(scrollY, [0, 128], [0, -16]);
+
+  useMotionValueEvent(scrollY, "change", (value) => {
+    setFiltersInteractive(value < 120);
+  });
 
   const { language } = useUIStore();
   const dir = language === 'ur' ? 'rtl' : 'ltr';
@@ -124,7 +133,7 @@ export default function Shop() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
-              className="text-4xl md:text-5xl font-display font-black text-foreground tracking-tight"
+              className="text-3xl sm:text-4xl md:text-5xl font-display font-black text-foreground tracking-tight"
             >
               <TranslatedText text="Products" />
             </motion.h1>
@@ -148,19 +157,26 @@ export default function Shop() {
         </div>
       </section>
 
-      {/* Search + Filters */}
-      <section className="sticky top-0 z-30 bg-white/70 dark:bg-black/50 backdrop-blur-md border-b border-border/40 py-4 transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-row items-center gap-4">
+      {/* Search + Filters — scrolls with page and fades out */}
+      <motion.section
+        style={{
+          opacity: filterOpacity,
+          y: filterY,
+          pointerEvents: filtersInteractive ? "auto" : "none",
+        }}
+        className="relative z-20 bg-white/70 dark:bg-black/50 backdrop-blur-md border-b border-border/40 py-4"
+      >
+        <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col lg:flex-row lg:items-center gap-4">
           
           {/* Search bar + Filter Toggle */}
-          <div className="flex items-center gap-3 w-full md:w-auto flex-1 md:flex-initial">
-            <div className="relative flex-1 md:w-96 md:flex-initial">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:flex-1 lg:min-w-0">
+            <div className="relative flex-1 w-full lg:max-w-md">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={language === 'ur' ? "مصنوعات تلاش کریں..." : "Search products..."}
-                className="w-full h-14 pl-12 pr-12 rounded-full border-2 border-border/80 bg-white/70 dark:bg-card/50 text-base focus:outline-hidden focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-lg hover:border-primary/40 transition-all duration-300 font-medium placeholder:text-muted-foreground/60 backdrop-blur-xs"
+                className="w-full h-12 sm:h-14 pl-12 pr-12 rounded-full border-2 border-border/80 bg-white/70 dark:bg-card/50 text-sm sm:text-base focus:outline-hidden focus:border-primary focus:ring-4 focus:ring-primary/10 shadow-lg hover:border-primary/40 transition-all duration-300 font-medium placeholder:text-muted-foreground/60 backdrop-blur-xs"
               />
               {search && (
                 <button
@@ -176,7 +192,7 @@ export default function Shop() {
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
               onClick={() => setShowFilters(!showFilters)}
-              className={`h-14 px-6 rounded-full border-2 font-bold flex items-center gap-2.5 transition-all shadow-md ${
+              className={`h-12 sm:h-14 px-5 sm:px-6 rounded-full border-2 font-bold flex items-center justify-center gap-2.5 transition-all shadow-md shrink-0 ${
                 showFilters || minPrice !== "" || maxPrice !== "" || sortBy !== "none"
                   ? "bg-primary text-white border-primary"
                   : "bg-white/75 dark:bg-card/60 border-border text-foreground hover:border-primary/40"
@@ -221,7 +237,7 @@ export default function Shop() {
             })}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Collapsible Advanced Filters Panel */}
       <AnimatePresence>

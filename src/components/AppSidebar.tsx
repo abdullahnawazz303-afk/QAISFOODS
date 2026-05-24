@@ -7,14 +7,16 @@ import { Button } from "@/components/ui/button";
 import qfLogo from "@/assets/qf-logo.png";
 import { Link, useLocation } from "react-router-dom";
 import {
-  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
+  Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   SidebarHeader, useSidebar,
 } from "@/components/ui/sidebar";
+import { BackToClientSiteLink } from "@/components/BackToClientSiteLink";
 import { QfLogo } from "@/components/QfLogo";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+
 
 const operationsNav = [
   { title: "Dashboard",        url: "/dashboard",          icon: LayoutDashboard },
@@ -60,6 +62,12 @@ export function AppSidebar() {
   useEffect(() => {
     const fetchCounts = async () => {
       try {
+        const pendingReviewsQuery = supabase
+          .from("reviews")
+          .select("*", { count: "exact", head: true })
+          .eq("is_allowed", false);
+
+
         const [
           { count: requests },
           { count: bookings },
@@ -73,7 +81,7 @@ export function AppSidebar() {
           supabase.from("online_orders").select("*", { count: "exact", head: true }).eq("status", "Pending"),
           supabase.from("guest_orders").select("*", { count: "exact", head: true }).eq("status", "Pending"),
           supabase.from("cheques").select("*", { count: "exact", head: true }).eq("status", "Pending"),
-          supabase.from("reviews").select("*", { count: "exact", head: true }).eq("is_allowed", false)
+          pendingReviewsQuery,
         ]);
 
         setBadges({
@@ -225,6 +233,10 @@ export function AppSidebar() {
         </SidebarGroup>
 
       </SidebarContent>
+
+      <SidebarFooter className="border-t border-sidebar-border p-3">
+        <BackToClientSiteLink className={cn("w-full", collapsed && "px-0")} variant={collapsed ? "ghost" : "button"} />
+      </SidebarFooter>
     </Sidebar>
   );
 }

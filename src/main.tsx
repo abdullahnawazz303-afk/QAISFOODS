@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
+import "react-day-picker/style.css";
 import "./index.css";
 import "./i18n";
 

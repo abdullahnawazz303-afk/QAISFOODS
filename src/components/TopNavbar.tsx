@@ -17,6 +17,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { BackToClientSiteLink } from "@/components/BackToClientSiteLink";
 
 /** Classic ☰ hamburger that toggles the sidebar */
 function HamburgerButton() {
@@ -85,7 +86,7 @@ export function TopNavbar() {
   const displayName = userEmail?.split("@")[0]?.replace(/[._]/g, " ") || "Admin";
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 h-20 border-b flex items-center px-3 sm:px-5 gap-2 bg-card/95 backdrop-blur-md shadow-sm shrink-0">
+    <header className="fixed inset-x-0 top-0 z-50 h-16 sm:h-20 border-b flex items-center px-3 sm:px-5 gap-2 bg-card/95 backdrop-blur-md shadow-sm shrink-0">
 
       {/* Classic 3-line hamburger */}
       <HamburgerButton />
@@ -98,6 +99,7 @@ export function TopNavbar() {
 
       {/* Right controls */}
       <div className="flex items-center gap-1 sm:gap-2">
+        <BackToClientSiteLink variant="ghost" />
         <ThemeSwitcher />
         <LanguageSwitcher />
 

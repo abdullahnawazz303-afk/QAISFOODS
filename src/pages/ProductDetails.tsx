@@ -94,44 +94,51 @@ export default function ProductDetails() {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
-  const [useLocalFallback, setUseLocalFallback] = useState(false);
+  /** Product reviews use localStorage by default (no 401 from RLS). Set VITE_PRODUCT_REVIEWS_REMOTE=true to use Supabase. */
+  const reviewsRemoteEnabled = import.meta.env.VITE_PRODUCT_REVIEWS_REMOTE === "true";
+  const [useLocalFallback, setUseLocalFallback] = useState(!reviewsRemoteEnabled);
+
+  const loadLocalReviews = () => {
+    if (!item?.id) return;
+    const local = localStorage.getItem(`reviews_${item.id}`);
+    if (local) {
+      try {
+        setReviews(JSON.parse(local));
+      } catch {
+        setReviews([]);
+      }
+    } else {
+      const initialMock: ProductReview[] = [
+        {
+          id: `mock-1-${item.id}`,
+          created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+          product_id: item.id,
+          reviewer_name: language === 'ur' ? "محمد عثمان" : "Muhammad Usman",
+          rating: 5,
+          comment: language === 'ur' ? "بہت ہی شاندار اور صاف دال ہے۔ کوالٹی بہترین ہے!" : "Superb quality, very clean grains. Highly recommended!",
+          user_id: null
+        },
+        {
+          id: `mock-2-${item.id}`,
+          created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+          product_id: item.id,
+          reviewer_name: language === 'ur' ? "عمران خان" : "Imran Khan",
+          rating: 4,
+          comment: language === 'ur' ? "پیکنگ اچھی ہے اور وزن بھی پورا تھا۔ اگلی بار بھی یہیں سے لیں گے۔" : "Good packing and weight was accurate. Will order again.",
+          user_id: null
+        }
+      ];
+      localStorage.setItem(`reviews_${item.id}`, JSON.stringify(initialMock));
+      setReviews(initialMock);
+    }
+  };
 
   const fetchReviews = async () => {
     if (!item?.id) return;
     setReviewsLoading(true);
 
     if (useLocalFallback) {
-      const local = localStorage.getItem(`reviews_${item.id}`);
-      if (local) {
-        try {
-          setReviews(JSON.parse(local));
-        } catch {
-          setReviews([]);
-        }
-      } else {
-        const initialMock: ProductReview[] = [
-          {
-            id: `mock-1-${item.id}`,
-            created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-            product_id: item.id,
-            reviewer_name: language === 'ur' ? "محمد عثمان" : "Muhammad Usman",
-            rating: 5,
-            comment: language === 'ur' ? "بہت ہی شاندار اور صاف دال ہے۔ کوالٹی بہترین ہے!" : "Superb quality, very clean grains. Highly recommended!",
-            user_id: null
-          },
-          {
-            id: `mock-2-${item.id}`,
-            created_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-            product_id: item.id,
-            reviewer_name: language === 'ur' ? "عمران خان" : "Imran Khan",
-            rating: 4,
-            comment: language === 'ur' ? "پیکنگ اچھی ہے اور وزن بھی پورا تھا۔ اگلی بار بھی یہیں سے لیں گے۔" : "Good packing and weight was accurate. Will order again.",
-            user_id: null
-          }
-        ];
-        localStorage.setItem(`reviews_${item.id}`, JSON.stringify(initialMock));
-        setReviews(initialMock);
-      }
+      loadLocalReviews();
       setReviewsLoading(false);
       return;
     }
@@ -145,11 +152,13 @@ export default function ProductDetails() {
 
       if (error) {
         setUseLocalFallback(true);
+        loadLocalReviews();
       } else {
-        setReviews(data as ProductReview[]);
+        setReviews((data ?? []) as ProductReview[]);
       }
     } catch {
       setUseLocalFallback(true);
+      loadLocalReviews();
     } finally {
       setReviewsLoading(false);
     }

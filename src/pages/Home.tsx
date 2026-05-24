@@ -15,10 +15,8 @@ type Review = {
   text: string;
   author: string;
   role: string;
-  date: string; // added date string
+  date: string;
 };
-
-
 
 const fadeSlide = (dir: "up" | "left" | "right" = "up") => ({
   hidden: {
@@ -36,8 +34,9 @@ export default function Home() {
   const [featuredItems, setFeaturedItems] = useState<ShopItem[]>([]);
   const { rates, fetchRates } = useRateCardStore();
   const { t } = useTranslation();
+  // Start empty — only show real approved reviews from DB
   const [testimonials, setTestimonials] = useState<Review[]>([]);
-  
+  const [reviewsLoading, setReviewsLoading] = useState(true);
 
   useEffect(() => {
     fetchRates();
@@ -63,28 +62,20 @@ export default function Home() {
       }
     };
 
-    // Fetch featured reviews for homepage
+    // Fetch up to 3 approved reviews from DB (no dummy fallback)
     const fetchReviews = async () => {
-      const { data, error } = await fetchFeaturedReviews();
-      if (data) {
-        // data is an array of arrays (reviews per featured position)
-        const flat = (data as any[]).flat();
-        // sort by created_at if exists, else keep order, then take first 3
-        const sorted = flat
-          .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-          .slice(0, 3);
-        // map to Review type, ensure date field
-        const reviews: Review[] = sorted.map((r: any) => ({
+      setReviewsLoading(true);
+      const { data } = await fetchFeaturedReviews();
+      setReviewsLoading(false);
+      if (!data?.length) return; // keep empty — no dummies
+      setTestimonials(
+        data.slice(0, 3).map((r: any) => ({
           text: r.text,
           author: r.author,
           role: r.role ?? '',
-          date: r.created_at ? new Date(r.created_at).toLocaleDateString() : ''
-        }));
-        setTestimonials(reviews);
-      }
-      if (error) {
-        console.error('Error fetching reviews:', error);
-      }
+          date: r.created_at ? new Date(r.created_at).toLocaleDateString() : '',
+        })),
+      );
     };
     fetchFeatured();
     fetchReviews();
@@ -97,59 +88,89 @@ export default function Home() {
       <HeroSlider />
 
       {/* ── Testimonials ───────────────────────────── */}
-      <section className="py-24 md:py-32 bg-[#F9F9F9] dark:bg-muted/20 relative overflow-hidden">
-        {/* Decorative Blob */}
-        <div className="absolute left-[-200px] top-[10%] w-[600px] h-[600px] bg-primary/5 blob-shape pointer-events-none" />
-        
-        <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10">
-          <motion.div
-            className="mb-16 md:mb-20 text-center"
-            variants={fadeSlide("up")}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-60px" }}
-          >
-            <span className="inline-block py-1.5 px-4 rounded-full bg-primary/10 text-primary font-bold text-xs tracking-[0.2em] uppercase mb-4">
-              {t('customer_reviews')}
-            </span>
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-foreground uppercase leading-[1.1] max-w-3xl mx-auto">
-              {t('trusted_by_businesses')}
-            </h2>
-          </motion.div>
+      {(reviewsLoading || testimonials.length > 0) && (
+        <section className="py-24 md:py-32 bg-[#F9F9F9] dark:bg-muted/20 relative overflow-hidden">
+          {/* Decorative Blob */}
+          <div className="absolute left-[-200px] top-[10%] w-[600px] h-[600px] bg-primary/5 blob-shape pointer-events-none" />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-            {testimonials.map((tItem, i) => (
-              <motion.div
-                key={i}
-                className="p-8 md:p-10 rounded-4xl bg-white dark:bg-card border border-border shadow-xs hover:shadow-lg transition-all duration-300 relative flex flex-col justify-between"
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{ delay: i * 0.15, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                whileHover={{ y: -5 }}
-              >
-                <div className="text-primary text-5xl font-serif leading-none mb-4 opacity-20">"</div>
-                <p className="text-base text-foreground leading-relaxed font-medium mb-8">
-                  <TranslatedText text={tItem.text} />
-                </p>
-                <div>
-                  <h4 className="font-bold text-foreground uppercase tracking-wider">
-                    <TranslatedText text={tItem.author} />
-                  </h4>
-                  <p className="text-xs text-muted-foreground uppercase tracking-widest mt-1">
-                    <TranslatedText text={tItem.role} />
-                  </p>
-                  {tItem.date && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      {tItem.date}
-                    </p>
-                  )}
+          <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10">
+            <motion.div
+              className="mb-16 md:mb-20 text-center"
+              variants={fadeSlide("up")}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-60px" }}
+            >
+              <span className="inline-block py-1.5 px-4 rounded-full bg-primary/10 text-primary font-bold text-xs tracking-[0.2em] uppercase mb-4">
+                {t('customer_reviews')}
+              </span>
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-display font-black text-foreground uppercase leading-[1.1] max-w-3xl mx-auto">
+                {t('trusted_by_businesses')}
+              </h2>
+            </motion.div>
+
+            {/* Loading skeletons while fetching */}
+            {reviewsLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="h-56 rounded-4xl bg-muted/60 animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+                  {testimonials.map((tItem, i) => (
+                    <motion.div
+                      key={i}
+                      className="p-8 md:p-10 rounded-4xl bg-white dark:bg-card border border-border shadow-xs hover:shadow-lg transition-all duration-300 relative flex flex-col justify-between"
+                      initial={{ opacity: 0, y: 40 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, margin: "-40px" }}
+                      transition={{ delay: i * 0.15, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                      whileHover={{ y: -5 }}
+                    >
+                      <div className="text-primary text-5xl font-serif leading-none mb-4 opacity-20">&ldquo;</div>
+                      <p className="text-base text-foreground leading-relaxed font-medium mb-8">
+                        <TranslatedText text={tItem.text} />
+                      </p>
+                      <div>
+                        <h4 className="font-bold text-foreground uppercase tracking-wider">
+                          <TranslatedText text={tItem.author} />
+                        </h4>
+                        <p className="text-xs text-muted-foreground uppercase tracking-widest mt-1">
+                          <TranslatedText text={tItem.role} />
+                        </p>
+                        {tItem.date && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            {tItem.date}
+                          </p>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
-              </motion.div>
-            ))}
+
+                {/* View All Reviews link */}
+                <motion.div
+                  className="mt-12 text-center"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.4, duration: 0.5 }}
+                >
+                  <Link
+                    to="/reviews"
+                    className="group inline-flex items-center gap-3 px-8 py-3 rounded-full bg-primary/5 text-primary font-bold hover:bg-primary hover:text-white transition-colors border border-primary/20 hover:border-primary"
+                  >
+                    View All Reviews
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </motion.div>
+              </>
+            )}
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ── Featured Categories ───────────────────── */}
       <section className="py-24 md:py-32 bg-white dark:bg-background relative">

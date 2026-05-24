@@ -39,7 +39,7 @@ export function PublicNavbar() {
     <>
       <div className="sticky top-0 z-50">
         <header className="bg-primary dark:bg-card text-primary-foreground dark:text-foreground relative shadow-md border-b dark:border-border/10">
-          <div className="max-w-7xl mx-auto flex h-24 items-center justify-between px-4 md:px-8">
+          <div className="max-w-7xl mx-auto flex h-20 sm:h-24 items-center justify-between px-4 md:px-8">
             
             {/* Overlapping Logo Container */}
             <div className="relative h-full flex items-center w-[160px]">
@@ -133,6 +133,17 @@ export function PublicNavbar() {
                           </div>
 
                           <div className="py-1">
+                            <Link
+                              to="/shop"
+                              onClick={() => setProfileOpen(false)}
+                              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-foreground hover:bg-muted/50 transition-colors text-left"
+                            >
+                              <ShoppingBag className="h-4 w-4 text-primary" />
+                              <span>
+                                {language === "ur" ? "دکان (ویب سائٹ)" : "Browse Shop"}
+                              </span>
+                            </Link>
+
                             <Link 
                               to={userRole === "customer" ? "/portal" : "/dashboard"}
                               onClick={() => setProfileOpen(false)}
@@ -258,6 +269,14 @@ export function PublicNavbar() {
                       </span>
                     </div>
                   </div>
+                  <Link
+                    to="/shop"
+                    onClick={() => setMobileOpen(false)}
+                    className="h-10 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors w-full"
+                  >
+                    <ShoppingBag className="h-4 w-4" />
+                    {language === "ur" ? "دکان" : "Browse Shop"}
+                  </Link>
                   <div className="grid grid-cols-2 gap-2">
                     <Link
                       to={userRole === "customer" ? "/portal" : "/dashboard"}
